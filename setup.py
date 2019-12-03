@@ -14,7 +14,7 @@ metainfo = {
     'version': version,
     'license' : 'new BSD',
     'url' : "https://github.com/sequana/",
-    'description': "A fastqc pipeline from sequana project." ,
+    'description': "A RNAseq pipeline from raw reads to feature counts" ,
     'platforms' : ['Linux', 'Unix', 'MacOsX', 'Windows'],
     'keywords' : ['snakemake, sequana, RNAseq, SARTools, differential analysis'],
     'classifiers' : [
