@@ -6,7 +6,7 @@ Sequana rnaseq pipeline documentation
 The **rnaseq** pipeline is a `Sequana <https://github.com/sequana/sequana>`_ pipeline. You can find the source code 
 on  `https://github.com/sequana/sequana_rnaseq <https://github.com/sequana/sequana_rnaseq/>`_. Would you have issues
 about the code, usage or lack of information, please fill a report 
-on `**Sequana** itself <https://github.com/sequana/sequana/issues>`_ indicating the pipeline name (We centralized all 
+on `Sequana itself <https://github.com/sequana/sequana/issues>`_ indicating the pipeline name (We centralized all 
 pipelines issues on **Sequana** repository only so as to be more responsive).
 
 If you use **Sequana**, please do not forget to cite us:
@@ -40,10 +40,38 @@ The Sequana rnaseq pipeline
 
 .. include:: ../README.rst
 
+Example
+=======
 
-Rules
-=====
+This example is taken from the official tutorial on Sequana webiste.
+First download a sample::
 
-.. snakemake:: fastqc
-.. snakemake:: multiqc
+    wget https://sequana.readthedocs.io/en/master/_downloads/WT_ATCACG_L001_R1_001.fastq.gz
+    wget https://sequana.readthedocs.io/en/master/_downloads/KO_ATCACG_L001_R1_001.fastq.gz
+
+
+    # its genome and annotation
+    mkdir Saccer3
+    cd Saccer3
+    wget http://hgdownload.cse.ucsc.edu/goldenPath/sacCer3/bigZips/chromFa.tar.gz
+    tar -xvzf chromFa.tar.gz
+    cat *.fa > Saccer3.fa
+    wget http://downloads.yeastgenome.org/curation/chromosomal_feature/saccharomyces_cerevisiae.gff -O Saccer3.gff
+    rm -f chr*
+    cd ..
+
+Then, prepare the script::
+
+    sequana_pipelines_fastqc --input-directory . --genome-directory . --genome-name Saccer3
+
+
+
+
+
+
+
+
+
+
+
 

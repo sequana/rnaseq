@@ -24,13 +24,23 @@ class Options(argparse.ArgumentParser):
             In practice, it copies the config file and the pipeline into a
             directory (rnaseq) together with an executable script
 
-            For a local run, use :
+            ::
 
-                sequana_pipelines_rnaseq --input-directory PATH_TO_DATA --run-mode local
+                sequana_pipelines_rnaseq --input-directory PATH_TO_DATA
 
-            For a run on a SLURM cluster:
+            You must provide a path to a genome of reference (with its GFF file).
 
-                sequana_pipelines_rnaseq --input-directory PATH_TO_DATA --run-mode slurm
+            We save the genomes in the genome directory where lots of genomes
+            can be stored. So, you also need to provide the name of a genome.
+
+            For instance, if you work on  Saccer3, type::
+
+                sequana_pipelines_rnaseq --input-directory \
+                    --genome-directory GENOMESPATH/Saccer3
+
+            The pipeline will search for the files Saccer3.fa and Saccer3.gff in
+            the directory GENOMESPATH/Saccer3.
+
 
         """
         )
@@ -51,21 +61,19 @@ class Options(argparse.ArgumentParser):
         so.add_options(self)
 
         pipeline_group = self.add_argument_group("pipeline_genome")
-        pipeline_group.add_argument("--genome-do", dest="genome_do", 
+        pipeline_group.add_argument("--genome-do", dest="genome_do",
             action="store_true")
-        pipeline_group.add_argument("--genome-directory", dest="genome_directory", 
+        pipeline_group.add_argument("--genome-directory", dest="genome_directory",
             default=".", required=True)
-        pipeline_group.add_argument("--genome-name", dest="genome_name", 
-            required=True)
 
         pipeline_group = self.add_argument_group("pipeline_cutadapt")
-        pipeline_group.add_argument("--cutadapt-fwd", dest="cutadapt_fwd", 
+        pipeline_group.add_argument("--cutadapt-fwd", dest="cutadapt_fwd",
             default="")
-        pipeline_group.add_argument("--cutadapt-rev", dest="cutadapt_rev", 
+        pipeline_group.add_argument("--cutadapt-rev", dest="cutadapt_rev",
             default="")
-        pipeline_group.add_argument("--cutadapt-quality", dest="cutadapt_quality", 
+        pipeline_group.add_argument("--cutadapt-quality", dest="cutadapt_quality",
             default=30, type=int)
-        
+
 """
 cutadapt:
  37     do: true
@@ -82,11 +90,6 @@ fastq_screen:
  50     conf: fastq_screen.conf
  51     options: --subset 200000  --aligner bowtie2
  52     pf2_report: false
-
- 53 kraken:
- 54     do: false
- 55     database_directory: ''
- 56     threads: 4
 
  57 bowtie1_mapping_rna:
  58     do: true
@@ -135,11 +138,6 @@ coverage:
  94     BWArRNA_file: /path/to/your/directory/human_rRNA/human_all_rRNA.fasta
  95     options: ''
 
- 96 multiqc:
- 97     options: -f -x *_init_* -x *left_kept_reads* -x *report_rnaseq* -e htseq
--e slamdunk
- 98     output-directory: multiqc
- 99     config_file: multiqc_config.yaml
 
 100 SARTools:
 101     do: false
@@ -184,9 +182,6 @@ def main(args=None):
 
     cfg.genome.genome_do = options.genome_do
     cfg.genome.genome_directory = os.path.abspath(options.genome_directory)
-    cfg.genome.name = options.genome_name
-    cfg.genome.fasta_file = options.genome_name + ".fa"
-    cfg.genome.gff_file = options.genome_name + ".gff"
 
     cfg.cutadapt.fwd = options.cutadapt_fwd
     cfg.cutadapt.rev = options.cutadapt_rev

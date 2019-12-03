@@ -25,15 +25,24 @@ exec(open(sequana.modules["dynamic_unpigz"], "r").read())
 exec(open(sequana.modules["mark_duplicates_dynamic"], "r").read())
 
 
-
 manager = sm.PipelineManager("rnaseq", config)
 
 __data__input = manager.getrawdata()
 
 
-__prefix_name__ = join(config["genome"]["genome_directory"], config["genome"]["name"])
-__fasta_file__ = __prefix_name__ + "/" + config["genome"]["name"] + ".fa"
-__gff_file__ = __prefix_name__ + "/" + config["genome"]["name"] + ".gff"
+
+# make sure it is absolute
+genome_directory = os.path.abspath(config["genome"]["genome_directory"])
+genome_name = genome_directory.rsplit("/", 1)[1]
+
+
+__prefix_name__ = genome_directory + "/" + genome_name
+__fasta_file__ = __prefix_name__ + ".fa"
+__gff_file__   = __prefix_name__ + ".gff"
+
+# TODO
+# check existence of fasta and gff
+
 
 if manager.config.genome.do:
     # create sequence dict file
@@ -43,7 +52,6 @@ if manager.config.genome.do:
     include: sm.modules["create_sequence_dictionary"]
 
     # indexing for bowtie1
-    # whole genome
     __bowtie1_index_ref__fasta =         __fasta_file__
     __bowtie1_index_ref__output_done =   __prefix_name__ + ".1.ebwt"
     __bowtie1_index_ref__output_prefix = __prefix_name__
@@ -52,7 +60,7 @@ if manager.config.genome.do:
 
     # rRNA genome
     if manager.config.genome.rRNA_file:
-        __bowtie1_index_rna__fasta =            __prefix__name + config["genome"]["rRNA_file"]
+        __bowtie1_index_rna__fasta =            __prefix_name + config["genome"]["rRNA_file"]
         __bowtie1_index_rna__output_done =      __prefix_name__ + "_rRNA.1.ebwt"
         __bowtie1_index_rna__output_prefix =    __prefix_name__ + "_rRNA"
         __bowtie1_index_rna__log = "logs/indexing/bowtie_rRNA.log"
@@ -252,7 +260,7 @@ if manager.config.star_mapping.do:
     __star_mapping__input = __clean_ngs__output
     __star_mapping__index_done = __star_index__output_done
     __star_mapping__index = __star_dir__
-    __star_mapping__ref = config["genome"]["fasta_file"]
+    __star_mapping__ref = __fasta_file__
     __star_mapping__logs = manager.getname("star_mapping", ".logs")
     __star_mapping__output_prefix1 = manager.getname("star_mapping", "_init_")
     __star_mapping__output_prefix2 = manager.getname("star_mapping", "_")
