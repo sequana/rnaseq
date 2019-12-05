@@ -1,8 +1,8 @@
 This is is the **rnaseq** pipeline from the `Sequana <https://sequana.readthedocs.org>`_ projet
 
-:Overview: TODO 
+:Overview: RNASeq analysis from raw data to feature counts
 :Input: A set of Fastq Files and genome reference and annotation.
-:Output: MultiQC reports and feature Counts 
+:Output: MultiQC reports and feature Counts
 :Status: Production
 :Citation: Cokelaer et al, (2017), ‘Sequana’: a Set of Snakemake NGS pipelines, Journal of Open Source Software, 2(16), 352, JOSS DOI doi:10.21105/joss.00352
 
@@ -25,8 +25,7 @@ Usage
 ::
 
     sequana_pipelines_rnaseq --help
-    sequana_pipelines_rnaseq --input-directory DATAPATH --run-mode local
-    sequana_pipelines_rnaseq --input-directory DATAPATH --run-mode slurm
+    sequana_pipelines_rnaseq --input-directory DATAPATH --genome-directory --aligner STAR
 
 This creates a directory with the pipeline and configuration file. You will then need 
 to execute the pipeline::
@@ -50,6 +49,11 @@ This pipelines requires the following executable(s):
 - bowtie2
 - STAR
 - featureCounts
+- picard
+- multiqc
+
+More may be needed depending on the configuration file options. For instance,
+you may use fastq_screen, in which case you need to install it and configure it. 
 
 .. image:: https://raw.githubusercontent.com/sequana/sequana_rnaseq/master/sequana_pipelines/rnaseq/dag.png
 
@@ -66,4 +70,15 @@ Rules and configuration details
 
 Here is the `latest documented configuration file <https://raw.githubusercontent.com/sequana/sequana_rnaseq/master/sequana_pipelines/rnaseq/config.yaml>`_
 to be used with the pipeline. Each rule used in the pipeline may have a section in the configuration file. 
+
+
+.. warning:: the RNAseQC rule is switch off and is not currently functional in
+   version 0.9.X
+
+Changelog
+~~~~~~~~~
+
+0.9.0: Major refactorisation. remove sartools, kraken rules. Indexing is now
+optional and can be set in the configuration. Configuration file is simplified
+with a general section to enter the genome location and aligner. 
 

@@ -1,10 +1,10 @@
 - cutadapt
-- picard-tools
+- picard
 - bowtie
 - bowtie2
 - multiqc
 - STAR
 - fastq_screen
-- featureCounts [subread]
-
-
+- featureCounts
+- deeptools
+- cufflinks

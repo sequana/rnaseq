@@ -30,89 +30,91 @@ manager = sm.PipelineManager("rnaseq", config)
 __data__input = manager.getrawdata()
 
 
+final_output = []
 
-# make sure it is absolute
-genome_directory = os.path.abspath(config["genome"]["genome_directory"])
+# Make sure it is absolute
+genome_directory = os.path.abspath(config["general"]["genome_directory"])
 genome_name = genome_directory.rsplit("/", 1)[1]
 
-
 __prefix_name__ = genome_directory + "/" + genome_name
-__fasta_file__ = __prefix_name__ + ".fa"
+__fastq_file__ = __prefix_name__ + ".fa"
 __gff_file__   = __prefix_name__ + ".gff"
 
-# TODO
-# check existence of fasta and gff
+# check existence of fasta and gff before starting;
+for this in [__fastq_file__, __gff_file__]:
+    if os.path.exists(this) is False:
+        raise IOError("File {} not found".format(__fastq_file__))
 
 
-if manager.config.genome.do:
-    # create sequence dict file
-    __create_sequence_dictionary__reference = __fasta_file__
-    __create_sequence_dictionary__output =    __fasta_file__ + ".dict"
-    __create_sequence_dictionary__log =       "logs/indexing/create_sequence_dictionary.log"
-    include: sm.modules["create_sequence_dictionary"]
+# create sequence dict file. Looks like it is used for picard tools.
+# FIXME: see if we cannot simplify this rule and merge it with the picard rule
+__create_sequence_dictionary__reference = __fastq_file__
+__create_sequence_dictionary__output =    __fastq_file__ + ".dict"
+__create_sequence_dictionary__log =       "logs/indexing/create_sequence_dictionary.log"
+include: sm.modules["create_sequence_dictionary"]
+final_output.extend([__create_sequence_dictionary__output])
 
-    # indexing for bowtie1
-    __bowtie1_index_ref__fasta =         __fasta_file__
+
+# we always want to do the bowtie1 index since we then search for rRNA with
+# bowtie1  (FIXME ?)
+if config['general']['indexing']:
+    __bowtie1_index_ref__fasta =         __fastq_file__
     __bowtie1_index_ref__output_done =   __prefix_name__ + ".1.ebwt"
     __bowtie1_index_ref__output_prefix = __prefix_name__
     __bowtie1_index_ref__log =           "logs/indexing/bowtie_genome.log"
     include: bowtie1_index_dynamic("ref")
-
-    # rRNA genome
-    if manager.config.genome.rRNA_file:
-        __bowtie1_index_rna__fasta =            __prefix_name + config["genome"]["rRNA_file"]
-        __bowtie1_index_rna__output_done =      __prefix_name__ + "_rRNA.1.ebwt"
-        __bowtie1_index_rna__output_prefix =    __prefix_name__ + "_rRNA"
-        __bowtie1_index_rna__log = "logs/indexing/bowtie_rRNA.log"
-    else :
-        __extract_fasta_from_bed__input =       __fasta_file__
-        __extract_fasta_from_bed__gff =         __gff_file__ 
-        __extract_fasta_from_bed__feature =     config["genome"]["rRNA_feature"]
-        __extract_fasta_from_bed__output =          __prefix_name__ + "_rRNA.fa"
-        __extract_fasta_from_bed__output_features = __prefix_name__ + "_rRNA.gff"
-        __extract_fasta_from_bed__log =             "logs/indexing/get_rRNA.log"
-        include: sm.modules["extract_fasta_from_bed"]
-
-        __bowtie1_index_rna__fasta = __extract_fasta_from_bed__output
-        __bowtie1_index_rna__output_done = __prefix_name__ + "_rRNA.1.ebwt"
-        __bowtie1_index_rna__output_prefix = __prefix_name__ + "_rRNA"
-        __bowtie1_index_rna__log = "logs/indexing/bowtie_rRNA.log"
-    include: bowtie1_index_dynamic("rna")
+# with or without indexing, we now set the bowtie2_index variable
+__bowtie1_index__ = __prefix_name__
 
 
-    # indexing for bowtie2
-    __bowtie2_index_ref__fasta =            __fasta_file__
-    __bowtie2_index_ref__output_done =      __prefix_name__ + ".1.bt2"
-    __bowtie2_index_ref__output_prefix =    __prefix_name__
-    __bowtie2_index_ref__log = "logs/indexing/bowtie2_genome.log"
-    include: bowtie2_index_dynamic("ref")
-
-    # indexing for star
-    __star_index__fasta =   __fasta_file__
-    __star_index__output_done = config["genome"]["genome_directory"] +  "/SAindex"
-    __star_index__output_dir =  config["genome"]["genome_directory"]
-    __star_index__log = "logs/indexing/star_genome.log"
-    include: sm.modules["star_index"]
-
-    #output index
-    __star_dir__ = __star_index__output_dir
-    __bowtie2_index__ = __bowtie2_index_ref__output_prefix
-    __bowtie1_index__ = __bowtie1_index_ref__output_prefix
+# rRNA genome
+if manager.config.general.rRNA_file:
+    __bowtie1_index_rna__fasta =            __prefix_name + config["general"]["rRNA_file"]
+    __bowtie1_index_rna__output_done =      __prefix_name__ + "_rRNA.1.ebwt"
+    __bowtie1_index_rna__output_prefix =    __prefix_name__ + "_rRNA"
+    __bowtie1_index_rna__log = "logs/indexing/bowtie_rRNA.log"
     __RNA_index__ = __bowtie1_index_rna__output_prefix
-    __sequence_dictionary__ = __create_sequence_dictionary__output
-    expected_output.extend([__create_sequence_dictionary__output,__bowtie1_index_ref__output_done,
-                            __bowtie1_index_rna__output_done,__bowtie2_index_ref__output_done,__star_index__output_done])
-
 else:
-    __star_dir__ = config["genome"]["genome_directory"]
-    __star_index__output_done = config["genome"]["genome_directory"] +  "/SAindex"
-    __bowtie2_index__ =__prefix_name__
-    __bowtie2_index_ref__output_done = __prefix_name__ + ".1.bt2"
-    __bowtie1_index__ = __prefix_name__
-    __bowtie1_index_ref__output_done = __prefix_name__+ ".1.ebwt"
-    __RNA_index__ = __prefix_name__ + "_rRNA"
+    # extract rRNA feature from GFF and get corresponding fasta
+    # and gff. if no match for rRNA, save empty fasta as AAAAAAAAAAA
+    __extract_fasta_from_bed__input =       __fastq_file__
+    __extract_fasta_from_bed__gff =         __gff_file__ 
+    __extract_fasta_from_bed__feature =     config["general"]["rRNA_feature"]
+    __extract_fasta_from_bed__output =          __prefix_name__ + "_rRNA.fa"
+    __extract_fasta_from_bed__output_features = __prefix_name__ + "_rRNA.gff"
+    __extract_fasta_from_bed__log =             "logs/indexing/get_rRNA.log"
+    include: sm.modules["extract_fasta_from_bed"]
+
+    __bowtie1_index_rna__fasta = __extract_fasta_from_bed__output
     __bowtie1_index_rna__output_done = __prefix_name__ + "_rRNA.1.ebwt"
-    __sequence_dictionary__ = __fasta_file__ + ".dict"
+    __bowtie1_index_rna__output_prefix = __prefix_name__ + "_rRNA"
+    __bowtie1_index_rna__log = "logs/indexing/bowtie_rRNA.log"
+    include: bowtie1_index_dynamic("rna")
+    __RNA_index__ = __bowtie1_index_rna__output_prefix
+
+# Build the bowtie2 index
+if manager.config.general.aligner == "bowtie2":
+    if config['general']['indexing']:
+        # indexing for bowtie2
+        __bowtie2_index_ref__fasta =            __fastq_file__
+        __bowtie2_index_ref__output_done =      __prefix_name__ + ".1.bt2"
+        __bowtie2_index_ref__output_prefix =    __prefix_name__
+        __bowtie2_index_ref__log = "logs/indexing/bowtie2_genome.log"
+        include: bowtie2_index_dynamic("ref")
+        expected_output.extend([__bowtie2_index_ref__output_done])
+    # with or without indexing, we now set the bowtie2_index variable
+    __bowtie2_index__ = __prefix_name__
+elif manager.config.general.aligner in [ "star", "STAR"]:
+    if config['general']['indexing']:
+        # indexing for star
+        __star_index__fasta =  __fastq_file__
+        __star_index__output_done = genome_directory +  "/SAindex"
+        __star_index__output_dir =  genome_directory
+        __star_index__log = "logs/indexing/star_genome.log"
+        include: sm.modules["star_index"]
+        expected_output.extend([genome_directory +  "/SAindex"])
+    __star_dir__ = genome_directory
+    __star_index__output_done = genome_directory +  "/SAindex"
 
 
 
@@ -123,7 +125,6 @@ __fastqc_samples__wkdir       = manager.getwkdir("fastqc_samples")
 __fastqc_samples__log         = "%s/fastqc_samples/fastqc.log" % manager.sample
 include: fastqc_dynamic("samples", manager)
 expected_output.extend(expand(__fastqc_samples__output_done, sample=manager.samples))
-
 
 
 if manager.config.cutadapt.do:
@@ -161,26 +162,27 @@ if manager.config.cutadapt.do:
         __cutadapt__mode = manager.config.cutadapt.mode
         __cutadapt__log = "%s/logs/cutadapt/cutadapt.txt" % manager.sample
         __cutadapt__sample = manager.sample
-        __clean_ngs__output = __cutadapt__output
+        __clean_fastq__output = __cutadapt__output
         include: sm.modules["cutadapt"]
 
 else:
-    __clean_ngs__output = __data__input
+    __clean_fastq__output = __data__input
+
 
 if manager.config.fastq_screen.do:
     # Fastq Screen
-    __fastq_screen__input = __clean_ngs__output
+    __fastq_screen__input = __clean_fastq__output
     __fastq_screen__logs = manager.getname("fastq_screen", ".logs")
 
     # hack could be improved TODO
     __fastq_screen__output = [x.replace(".fastq.gz", "_screen.txt") for x in __fastq_screen__input]
 
-
     include: sm.modules["fastq_screen"]
-    if manager.config.fastq_screen.pf2_report:
+
+    if manager.config.fastq_screen.report:
         __fastq_screen_report__input = __fastq_screen__output
         __fastq_screen_report__figure = manager.getname("fastq_screen", "_report.svg")
-        __fastq_screen_report__logs =  manager.getname("fastq_screen", "pf2_report.logs")
+        __fastq_screen_report__logs =  manager.getname("fastq_screen", "report.logs")
         include: sm.modules["fastq_screen_report"]
         expected_output.extend(expand(__fastq_screen_report__figure, sample=manager.samples))
     else:
@@ -188,9 +190,8 @@ if manager.config.fastq_screen.do:
 
 
 
-
 # FASTQC on input data set
-__fastqc_filtered__input_fastq = __clean_ngs__output
+__fastqc_filtered__input_fastq = __clean_fastq__output
 __fastqc_filtered__output_done = manager.getname("fastqc_filtered", ".done")
 __fastqc_filtered__wkdir       = manager.getwkdir("fastqc_filtered")
 __fastqc_filtered__log         = "%s/fastqc_filtered/fastqc.log" % manager.sample
@@ -225,7 +226,8 @@ if manager.config.bowtie1_mapping_rna.do:
     include: bowtie1_mapping_dynamic("rna", manager)
     expected_output.extend(expand(__bowtie1_mapping_rna__sort, sample=manager.samples))
 
-if manager.config.bowtie1_mapping_ref.do:
+
+if manager.config.general.aligner == "bowtie1":
     # Mapper bowtie 1
     __bowtie1_mapping_ref__input = __unpigz__output
     __bowtie1_mapping_ref__index_done = __bowtie1_index_ref__output_done
@@ -237,12 +239,9 @@ if manager.config.bowtie1_mapping_ref.do:
     include: bowtie1_mapping_dynamic("ref", manager)
     expected_output.extend(expand(__bowtie1_mapping_ref__sort, sample=manager.samples))
     __mapping_output = __bowtie1_mapping_ref__sort
-
-
-if manager.config.bowtie2_mapping_ref.do:
-
+elif manager.config.general.aligner == "bowtie2":
     # mapping on ref
-    __bowtie2_mapping_ref__input = __clean_ngs__output
+    __bowtie2_mapping_ref__input = __clean_fastq__output
     __bowtie2_mapping_ref__index_done = __bowtie2_index_ref__output_done
     __bowtie2_mapping_ref__sort = manager.getname("bowtie2_mapping_ref", ".sorted.bam")
     __bowtie2_mapping_ref__bam = manager.getname("bowtie2_mapping_ref", ".bam")
@@ -253,14 +252,12 @@ if manager.config.bowtie2_mapping_ref.do:
     include: bowtie2_mapping_dynamic("ref", manager)
     expected_output.extend(expand(__bowtie2_mapping_ref__sort, sample=manager.samples))
     __mapping_output = __bowtie2_mapping_ref__sort
-
-
-if manager.config.star_mapping.do:
+elif manager.config.general.aligner == "star":
     # Mapper rna-star
-    __star_mapping__input = __clean_ngs__output
+    __star_mapping__input = __clean_fastq__output
     __star_mapping__index_done = __star_index__output_done
     __star_mapping__index = __star_dir__
-    __star_mapping__ref = __fasta_file__
+    __star_mapping__ref = __fastq_file__
     __star_mapping__logs = manager.getname("star_mapping", ".logs")
     __star_mapping__output_prefix1 = manager.getname("star_mapping", "_init_")
     __star_mapping__output_prefix2 = manager.getname("star_mapping", "_")
@@ -273,26 +270,34 @@ if manager.config.star_mapping.do:
     __mapping_output = __star_mapping__sort
 
 
-# generating of bigwig files
-if manager.config.coverage.do:
+# generating bigwig files
+if manager.config.coverage.do is True:
     __bamCoverage__input = __mapping_output
     __bamCoverage__log = manager.getname("bamCoverage", ".logs")
     __bamCoverage__output = manager.getname("bamCoverage", ".norm.bw")
     include: sm.modules["bamCoverage"]
-    expected_output.extend(expand(__bamCoverage__output, sample=manager.samples))
-else :
+    final_output.extend(expand(__bamCoverage__output, sample=manager.samples))
+
+
+if manager.config.igvtools.do:
+    # if nothing provided, it must be an empty string
+    if manager.config.igvtools.chrom_sizes_file.strip():
+        pass
+    else:
+      config["igvtools"]["chrom_sizes_file"] = __fastq_file__
     __igvtools__input = __mapping_output
     __igvtools__output = manager.getname("igvtools", ".tdf")
     __igvtools__log = manager.getname("igvtools", ".logs")
     include: sm.modules["igvtools"]
-    #expected_output.extend(expand(__igvtools__output, sample=manager.samples))
+    final_output.extend(expand(__igvtools__output, sample=manager.samples))
 
 
 # Feature counts from subread suite
-if manager.config.star_mapping.do:
+if manager.config.general.aligner == "star":
     __feature_counts__input = __star_mapping__sort
 else :
     __feature_counts__input = __mapping_output
+
 if manager.config.feature_counts.do:
     __feature_counts__output_count = manager.getname("feature_counts", "_feature.out")
     __feature_counts__gff = __gff_file__
@@ -314,7 +319,6 @@ __add_read_group__rg = "ID=%s LB=%s PL=%s PU=%s SM=%s" % (
 include: sm.modules["add_read_group"]
 
 
-
 # Mark duplicates
 if config["mark_duplicates"]["do"]:
     __mark_duplicates_ref__input = __add_read_group__output
@@ -326,34 +330,25 @@ if config["mark_duplicates"]["do"]:
     expected_output.extend(expand(__mark_duplicates_ref__output, sample=manager.samples))
 
 
-
 if config["RNAseQC"]["do"]:
-    __reorderSam__input = __mark_duplicates_ref__output
+    __reorderSam__input_sam = __mark_duplicates_ref__output
+    __reorderSam__input_genome = __fastq_file__
     __reorderSam__logs = manager.getname("reorderSam", ".logs")
     __reorderSam__output = manager.getname("reorderSam", "_reorder.bam")
     include: sm.modules["reorderSam"]
+    expected_output.extend(expand(__reorderSam__output, sample=manager.samples))
     __RNAseQC__input_bam = expand(__mark_duplicates_ref__output, sample=manager.samples)
+    __RNAseQC__input_genome = __fastq_file__
+    if os.path.exists(config['RNAseQC']['gtf_file']):
+        __RNAseQC__input_gtf = config['RNAseQC']['gtf_file']
+    else:
+        __RNAseQC__input_gtf = genome_directory + os.sep + config['RNAseQC']['gtf_file']
+    __RNAseQC__params_directory = "RNAseQC"
     __RNAseQC__logs = "RNAseQC/RNAseQC.log"
-    __RNAseQC__output = "RNAseQC"
-    __RNAseQC__conf = "RNAseQC/sample_index.txt"
-    __RNAseQC__figure =  "RNAseQC/Transcript-associated_Reads_metrics.svg"
+    __RNAseQC__output_conf = "RNAseQC/sample_index.txt"
+    __RNAseQC__output_figure =  "RNAseQC/Transcript-associated_Reads_metrics.svg"
     include: sm.modules["RNAseQC"]
-    expected_output.extend([__RNAseQC__figure])
-
-
-if config["SARTools"]["do"]:
-    __preSARTools__input = expand(__feature_counts__output_gene_count, sample=manager.samples)
-    __preSARTools__logs = "SARTools/preSARTools.log"
-    __preSARTools__output_directory = "SARTools/" + config["SARTools"]["rawDir"]
-    __preSARTools__targetFile = "SARTools/target.txt"
-    include: sm.modules["preSARTools"]
-    __SARTools__input = config["SARTools"]["rawDir"]
-    __SARTools__targetFile = __preSARTools__targetFile
-    __SARTools__logs = "SARTools.log"
-    __SARTools__output = "SARTools/"
-    __SARTools__output_file = "SARTools.done"
-    include: sm.modules["SARTools"]
-    expected_output.extend([__SARTools__output_file])
+    expected_output.extend([__RNAseQC__output_figure])
 
 
 # !Reset expected_output variable after multiqc
@@ -371,8 +366,7 @@ else :
 __multiqc__output_dir = config['multiqc']['output-directory']
 
 include: sm.modules["multiqc"]
-expected_output = [__multiqc__output]
-
+final_output.extend([__multiqc__output])
 
 
 # Include rule graph for each sample
@@ -380,13 +374,13 @@ __rulegraph__input = __snakefile__
 __rulegraph__output = "rulegraph/rulegraph.svg"
 __rulegraph__mapper = {"fastqc_samples": "fastqc_samples/"}
 include: sm.modules['rulegraph']
-expected_output.extend([__rulegraph__output])
+final_output.extend([__rulegraph__output])
 
 
 # Add Conda
 __conda__output = "requirements.txt"
 include: sm.modules['conda']   # Create requirements.txt(dependencies)
-expected_output.extend([__conda__output])
+final_output.extend([__conda__output])
 
 
 # create a json file that summarise information of your pipeline
@@ -411,7 +405,7 @@ expected_output.extend([__conda__output])
 localrules: conda, rulegraph
 
 rule rnaseq:
-    input: expected_output
+    input: final_output
 
 
 onsuccess:
@@ -434,8 +428,8 @@ onsuccess:
         try: os.mkdir("cluster_logs")
         except:pass
 
-        try: shell("mv slurm* cluster_logs/")
-        except: pass
+        #try: shell("mv slurm* cluster_logs/")
+        #except: pass
 
         # Create a cleanup python file to clean a sub-directory
         sm.create_cleanup(proj)

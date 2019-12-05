@@ -51,18 +51,21 @@ First download a sample::
 
 
     # its genome and annotation
-    mkdir Saccer3
-    cd Saccer3
+    mkdir genomes/Saccer3
+    cd genomes/Saccer3
     wget http://hgdownload.cse.ucsc.edu/goldenPath/sacCer3/bigZips/chromFa.tar.gz
     tar -xvzf chromFa.tar.gz
     cat *.fa > Saccer3.fa
     wget http://downloads.yeastgenome.org/curation/chromosomal_feature/saccharomyces_cerevisiae.gff -O Saccer3.gff
     rm -f chr*
-    cd ..
+    cd ../..
 
 Then, prepare the script::
 
-    sequana_pipelines_fastqc --input-directory . --genome-directory . --genome-name Saccer3
+    sequana_pipelines_fastqc --input-directory . --genome-directory genomes/Saccer3 --aligner STAR
+    cd rnaseq
+    snakemake -s rnaseq.rules
+    # or just run the script rnaseq.sh
 
 
 

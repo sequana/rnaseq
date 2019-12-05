@@ -12,15 +12,33 @@ input_readtag: "%(input_readtag)s"
 input_pattern: "%(input_pattern)s"
 # =========================================== Sections for the users
 
+#############################################################################
+# Genome section: 
+#
+# :Parameters:
+#
+# - aligner: either star, bowtie or bowtie2. fastq_screen, if checked, uses
+#        either bowtie2 by default. 
+# - genome_directory: directory where all indexes are written. 
+# - rRNA_file: path to fasta file for ribosomal RNA if provided (to be found in
+#   genome_directory)
+# - rRNA_feature: if rRNA_fasta not provided, ribosomal RNA will be extract 
+#     from GFF using this feature
+general:
+    aligner: "star"
+    genome_directory: /home/cokelaer/Work/github/sequana_rnaseq/test/genomes/Saccer3
+    rRNA_file: ''
+    rRNA_feature: rRNA
+    indexing: False
 
+
+######################
 # if files are required for a pipeline and are within sequana or should
 # be downloaded before the pipeline provide them in this section
 # Note that sequana and url fields are followed by itemised files or links
 # using the front dashes
 requirements:
     - Institut_Pasteur.png
-
-
 
 
 ##################################################################
@@ -32,32 +50,11 @@ requirements:
 # - platform: Name of the sequencing platform
 # - instrument: name ot the instrument type
 # - flowcell: flowcell ID
-
 sequencing:
     platform: "Illumina"
     instrument: "Hiseq2500"
     flowcell: "H35CTBCXY"
 
-#############################################################################
-# Indexing section: if checked, all index for bowtie (1&2), star, etc... will be produced in dir
-#
-# :Parameters:
-#
-# - do: if unchecked, this rule is ignored
-# - genome_directory: directory where all indexed are written
-# - rRNA_file: path to fasta file for ribosomal RNA if provided (to be found in
-#   genome_directory)
-# - rRNA_feature: if rRNA_fasta not provided, ribosomal RNA will be extract from GFF using this feature
-#   fasta_file, if not provided is genome_directory/name.fa
-#   gff_file, if not provided is genome_directory/name.fa
-#
-#   If genome directory is Vibrio, then we expect to find Vibrio/Vibrio.fa and
-#   Vibrio/Vibrio.gff 
-genome:
-  do: yes
-  genome_directory: /path/to/your/directory
-  rRNA_file:
-  rRNA_feature: "rRNA"
 
 #################################################################
 # FastQC section
@@ -133,11 +130,11 @@ cutadapt:
 # - pf2_report: allows to plot a specific PF2 report
 #
 fastq_screen:
-    do: no
+    do: yes
     conf: "fastq_screen.conf"
-    options: "--subset 200000  --aligner bowtie2"
-    pf2_report: no
-
+    options: "--subset 200000  "
+    aligner: "bowtie2"
+    report: yes
 
 
 
@@ -165,7 +162,6 @@ bowtie1_mapping_rna:
 # - threads: number of threads to be used
 #
 star_mapping:
-    do: no
     options: "--outFilterMismatchNoverLmax 0.05 --seedSearchStartLmax 20"
     threads: 4
 
@@ -179,7 +175,6 @@ star_mapping:
 # - threads: number of threads to be used
 #
 bowtie1_mapping_ref:
-    do: yes
     options: "--chunkmbs 400 -m 1 "
     threads: 4
 
@@ -193,7 +188,6 @@ bowtie1_mapping_ref:
 # - threads: number of threads to be used
 #
 bowtie2_mapping_ref:
-    do: no
     #options: "--dovetail --no-mixed --no-discordant " for paired-end data
     options: ""
     threads: 4
@@ -255,9 +249,6 @@ feature_counts:
 #                      inclusion. A value of 0 disables filtering and is
 #                      needed for including single-end and orphan reads.
 # - threads: number of threads to be used
-# - chromSize: path to index of reference genome obtain by samtools faidx
-
-
 coverage:
     do: no
     binSize: 10
@@ -266,9 +257,19 @@ coverage:
     minFragmentLength: 0 #Note that a value other than 0 will exclude all single-end reads.
     maxFragmentLength: 0 #A value of 0 disables filtering and is needed for including single-end and orphan reads.
     threads: 4
-    chromSize_file: hg19.chrom.sizes
 
 
+###########################################################################
+# Creates a tdf files using igvtools
+#
+# :Parameters:
+#
+# - chromSize: path to index of reference genome obtain by samtools faidx
+igvtools:
+    do: false
+    # can be a link to the fasta file or an existing chrom.sizes file
+    # If none provided, will use the input fasta file
+    chrom_sizes_file: 
 
 
 #############################################################################
@@ -302,11 +303,10 @@ mark_duplicates:
 #            rRNA content. The value should be the rRNA
 #            reference fasta.
 # - options: any options recognised by RNA-seQC tool
-
 RNAseQC:
      do: no
-     gtf_file: /path/to/your/directory/annotation/gtf/hg19.gtf
-     BWArRNA_file: /path/to/your/directory/human_rRNA/human_all_rRNA.fasta
+     gtf_file: file.gtf
+     BWArRNA_file: file_rRNA.fasta
      options: ""
 
 
@@ -324,45 +324,3 @@ multiqc:
     options: "-f -x *_init_* -x *left_kept_reads* -x *report_rnaseq* -e htseq -e slamdunk"
     output-directory: "multiqc"
     config_file: "multiqc_config.yaml"
-
-#############################################################################
-#   Statistical analysis with SARTools for a simple experimental design
-#   see https://github.com/PF2-pasteur-fr/SARTools
-#
-# :Parameters:
-#  Required parameters:
-# - design: path to design file
-# - projectName: name of the project (No spaces allowed)
-# - author: author of the statistical analysis/report
-# - rawDir: path to the directory containing raw counts files
-# - featuresToRemove: NULL if no feature to remove
-#  Optional parameters:
-# - varInt: factor of interest
-# - condRef: reference biological condition
-# - batch: blocking factor: NULL (default) or "batch" for example
-# - fitType: mean-variance relationship: "parametric" (default) or "local"
-# - cooksCutoff: TRUE/FALSE to perform the outliers detection (default is TRUE)
-# - independentFiltering: TRUE/FALSE to perform independent filtering (default is TRUE)
-# - alpha: threshold of statistical significance
-# - pAdjustMethod: p-value adjustment method: "BH" (default) or "BY"
-# - typeTrans: transformation for PCA/clustering: "VST" or "rlog"
-# - locfunc: "median" (default) or "shorth" to estimate the size factors
-
-
-SARTools:
-  do: no
-  design: "path/to/file"
-  projectName: "RNAseq"
-  author: "NAME"
-  rawDir: "featureCounts/"
-  featuresToRemove: "NULL"
-  varInt: "group"
-  condRef: "WT"
-  batch: "NULL"
-  fitType: "parametric"
-  cooksCutoff: "TRUE"
-  independentFiltering: "TRUE"
-  alpha: "0.05"
-  pAdjustMethod: "BH"
-  typeTrans: "VST"
-  locfunc: "median"

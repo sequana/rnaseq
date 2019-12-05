@@ -4,8 +4,8 @@ __revision__ = "$Id: $" # for the SVN Id
 from setuptools import setup, find_namespace_packages
 
 _MAJOR               = 0
-_MINOR               = 8
-_MICRO               = 1
+_MINOR               = 9
+_MICRO               = 0
 version              = '%d.%d.%d' % (_MAJOR, _MINOR, _MICRO)
 release              = '%d.%d' % (_MAJOR, _MINOR)
 
@@ -60,7 +60,8 @@ setup(
     # This is recursive include of data files
     exclude_package_data = {"": ["__pycache__"]},
     package_data = {
-        '': ['*.yaml', "*.rules", "*.json", "requirements.txt"],
+        '': ['*.yaml', "*.rules", "*.json", "requirements.txt",
+             "fastq_screen.conf"],
         'sequana_pipelines.rnaseq.data' : ['*.*'], 
         },
 
