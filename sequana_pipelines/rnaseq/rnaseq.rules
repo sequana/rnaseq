@@ -307,6 +307,7 @@ if manager.config.feature_counts.do:
     include: sm.modules["feature_counts"]
     expected_output.extend(expand(__feature_counts__output_count, sample=manager.samples))
 
+    
 
 # Add Read group on BAM files
 __add_read_group__input = __mapping_output
@@ -319,6 +320,8 @@ __add_read_group__rg = "ID=%s LB=%s PL=%s PU=%s SM=%s" % (
 include: sm.modules["add_read_group"]
 
 
+# duplicates can be from PCR or if SR, by pure chance.
+# if Paired, most likely a PCR origin.
 # Mark duplicates
 if config["mark_duplicates"]["do"]:
     __mark_duplicates_ref__input = __add_read_group__output
@@ -425,14 +428,14 @@ onsuccess:
         shell("cp config.yaml %s" % report_dir)
         shell("cp requirements.txt %s" % report_dir)
         shell("cp snakemake_stats.png %s" % report_dir)
-        try: os.mkdir("cluster_logs")
-        except:pass
-
-        #try: shell("mv slurm* cluster_logs/")
-        #except: pass
 
         # Create a cleanup python file to clean a sub-directory
         sm.create_cleanup(proj)
+            
+    tocopy = expand(__feature_counts__output_count, sample=manager.samples)
+    try:os.mkdir("feature_counts")
+    except:pass
+    shell("cp {} ./feature_counts/ ".format(" ".join(tocopy)))
 
     sm.OnSuccess()() # create instance to create main cleanup
 
