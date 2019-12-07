@@ -5,7 +5,7 @@ from setuptools import setup, find_namespace_packages
 
 _MAJOR               = 0
 _MINOR               = 9
-_MICRO               = 1
+_MICRO               = 2
 version              = '%d.%d.%d' % (_MAJOR, _MINOR, _MICRO)
 release              = '%d.%d' % (_MAJOR, _MINOR)
 
@@ -68,7 +68,8 @@ setup(
     zip_safe=False,
 
     entry_points = {'console_scripts':[
-        'sequana_pipelines_rnaseq=sequana_pipelines.rnaseq.main:main']
+        'sequana_pipelines_rnaseq=sequana_pipelines.rnaseq.main:main',
+        'sequana_rnaseq=sequana_pipelines.rnaseq.main:main']
     }
 
 )

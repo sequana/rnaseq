@@ -78,9 +78,12 @@ to be used with the pipeline. Each rule used in the pipeline may have a section 
 Changelog
 ~~~~~~~~~
 
-0.9.0: Major refactorisation. remove sartools, kraken rules. Indexing is now
+
+0.9: Major refactorisation. remove sartools, kraken rules. Indexing is now
 optional and can be set in the configuration. Configuration file is simplified
-with a general section to enter the genome location and aligner. Fixed rules
-that were not up-to-date with several executables used in the pipeline including
-picard, fastq_screen, etc. See Sequana Changelog for details.
+with a general section to enter the genome location and aligner. Fixed rules in
+sequana (0.8.0) that were not up-to-date with several executables used in the
+pipeline including picard, fastq_screen, etc. See Sequana Changelog for details
+with respect to rules changes. Copying the feature counts in main directory
+ready to use for a differential analysis.
 
