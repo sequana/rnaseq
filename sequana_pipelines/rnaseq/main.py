@@ -138,20 +138,25 @@ def main(args=None):
 
 
     cfg.fastq_screen.do = options.do_fastq_screen
-    cfg.fastq_screen.conf = options.fastq_screen_conf
+    # get absolute path
+    fastq_screen_conf = os.path.abspath(options.fastq_screen_conf)
+    cfg.fastq_screen.conf = fastq_screen_conf
+
+
+    # copy the fastq_screen.conf input or default file
+    import shutil
+    import sequana_pipelines.rnaseq
+    if options.do_fastq_screen and options.fastq_screen_conf:
+        assert os.path.exists(fastq_screen_conf)
+        shutil.copy(fastq_screen_conf,manager.workdir)
+    else:
+        # Just copy the default file
+        shutil.copy(os.path.join(sequana_pipelines.rnaseq.__path__[0] ,
+            "fastq_screen.conf"), manager.workdir)
 
     # finalise the command and save it; copy the snakemake. update the config
     # file and save it.
     manager.teardown()
-
-
-    import shutil
-    import sequana_pipelines.rnaseq
-    shutil.copy(os.path.join(sequana_pipelines.rnaseq.__path__[0] ,
-        "fastq_screen.conf"),
-        manager.workdir
-    )
-
 
 if __name__ == "__main__":
     main()
