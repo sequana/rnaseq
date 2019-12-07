@@ -18,11 +18,9 @@ metainfo = {
     'platforms' : ['Linux', 'Unix', 'MacOsX', 'Windows'],
     'keywords' : ['snakemake, sequana, RNAseq, SARTools, differential analysis'],
     'classifiers' : [
-          #'Development Status :: 4 - Beta',
           'Development Status :: 5 - Production/Stable',
           'Intended Audience :: Education',
           'Intended Audience :: End Users/Desktop',
-          'Intended Audience :: Developers',
           'Intended Audience :: Science/Research',
           'License :: OSI Approved :: BSD License',
           'Operating System :: OS Independent',
@@ -60,7 +58,7 @@ setup(
     # This is recursive include of data files
     exclude_package_data = {"": ["__pycache__"]},
     package_data = {
-        '': ['*.yaml', "*.rules", "*.json", "requirements.txt",
+        '': ['*.yaml', "*.rules", "*.json", "requirements.txt", "*png",
              "fastq_screen.conf"],
         'sequana_pipelines.rnaseq.data' : ['*.*'], 
         },
