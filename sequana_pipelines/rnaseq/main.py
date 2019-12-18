@@ -69,15 +69,9 @@ class Options(argparse.ArgumentParser):
             help= "a mapper in bowtie, bowtie2, STAR")
 
         # cutadapt related
-        pipeline_group = self.add_argument_group("pipeline_cutadapt")
-        pipeline_group.add_argument("--skip-cutadapt", action="store_false",
-            help="perform cutadapt cleaning")
-        pipeline_group.add_argument("--cutadapt-fwd", dest="cutadapt_fwd",
-            default="")
-        pipeline_group.add_argument("--cutadapt-rev", dest="cutadapt_rev",
-            default="")
-        pipeline_group.add_argument("--cutadapt-quality", dest="cutadapt_quality",
-            default=30, type=int)
+        so = CutadaptOptions()
+        so.add_options(self)
+
 
         # fastq_screen
         pipeline_group = self.add_argument_group("pipeline_fastq_screen")
@@ -128,6 +122,7 @@ def main(args=None):
     cfg.cutadapt.fwd = options.cutadapt_fwd
     cfg.cutadapt.rev = options.cutadapt_rev
     cfg.cutadapt.quality = options.cutadapt_quality
+    cfg.cutadapt.tool_choice = options.cutadapt_tool_choice
 
     cfg.input_directory = os.path.abspath(options.input_directory)
     cfg.input_pattern = options.input_pattern
@@ -147,13 +142,15 @@ def main(args=None):
     # copy the fastq_screen.conf input or default file
     import shutil
     import sequana_pipelines.rnaseq
-    if options.do_fastq_screen and options.fastq_screen_conf:
+    if options.fastq_screen_conf:
         assert os.path.exists(fastq_screen_conf)
-        shutil.copy(fastq_screen_conf,manager.workdir)
+        shutil.copy(fastq_screen_conf, manager.workdir)
+        cfg.fastq_screen.do = True
     else:
         # Just copy the default file
         shutil.copy(os.path.join(sequana_pipelines.rnaseq.__path__[0] ,
             "fastq_screen.conf"), manager.workdir)
+    
 
     # finalise the command and save it; copy the snakemake. update the config
     # file and save it.

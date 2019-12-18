@@ -78,6 +78,8 @@ to be used with the pipeline. Each rule used in the pipeline may have a section 
 Changelog
 ~~~~~~~~~
 
+0.9.3: if a fastq_screen.conf is provided, we switch the fastqc_screen section
+ON automatically.
 0.9: Major refactorisation. remove sartools, kraken rules. Indexing is now
 optional and can be set in the configuration. Configuration file is simplified
 with a general section to enter the genome location and aligner. Fixed rules in
