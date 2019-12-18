@@ -121,7 +121,7 @@ def main(args=None):
 
     # general
     cfg.general.genome_directory = os.path.abspath(options.genome_directory)
-    cfg.general.aligner = cfg.general.aligner
+    cfg.general.aligner = options.aligner
 
     # cutadapt
     cfg.cutadapt.do = options.skip_cutadapt
