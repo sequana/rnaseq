@@ -104,7 +104,7 @@ if manager.config.general.aligner == "bowtie2":
         expected_output.extend([__bowtie2_index_ref__output_done])
     # with or without indexing, we now set the bowtie2_index variable
     __bowtie2_index__ = __prefix_name__
-elif manager.config.general.aligner in [ "star", "STAR"]:
+elif manager.config.general.aligner  == "star":
     if config['general']['indexing']:
         # indexing for star
         __star_index__fasta =  __fastq_file__
@@ -307,7 +307,7 @@ if manager.config.feature_counts.do:
     include: sm.modules["feature_counts"]
     expected_output.extend(expand(__feature_counts__output_count, sample=manager.samples))
 
-    
+
 
 # Add Read group on BAM files
 __add_read_group__input = __mapping_output

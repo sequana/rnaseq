@@ -1,6 +1,7 @@
 import sys
 import os
 import argparse
+import shutil
 
 from sequana.pipelines_common import *
 from sequana.snaketools import Module
@@ -65,8 +66,8 @@ class Options(argparse.ArgumentParser):
         pipeline_group.add_argument("--genome-directory", dest="genome_directory",
             default=".", required=True)
         pipeline_group.add_argument("--aligner", dest="aligner", required=True,
-            choices=['bowtie2', 'bowtie1', 'STAR', 'star'],
-            help= "a mapper in bowtie, bowtie2, STAR")
+            choices=['bowtie2', 'bowtie1', 'star'],
+            help= "a mapper in bowtie, bowtie2, star")
 
         # cutadapt related
         so = CutadaptOptions()
@@ -76,6 +77,7 @@ class Options(argparse.ArgumentParser):
         # fastq_screen
         pipeline_group = self.add_argument_group("pipeline_fastq_screen")
         pipeline_group.add_argument("--do-fastq-screen", action="store_true",
+            default=False, 
             help="run fastq_screen ")
         pipeline_group.add_argument("--fastq-screen-conf",
             default="fastq_screen.conf", type=str, 
@@ -113,17 +115,16 @@ def main(args=None):
     # fill the config file with input parameters
     cfg = manager.config.config
 
-    # general
+    # --------------------------------------------------------- general
     cfg.general.genome_directory = os.path.abspath(options.genome_directory)
     cfg.general.aligner = options.aligner
 
-    # cutadapt
-    cfg.cutadapt.do = options.skip_cutadapt
-    cfg.cutadapt.fwd = options.cutadapt_fwd
-    cfg.cutadapt.rev = options.cutadapt_rev
-    cfg.cutadapt.quality = options.cutadapt_quality
-    cfg.cutadapt.tool_choice = options.cutadapt_tool_choice
+    # --------------------------------------------------------- cutadapt
+    cfg.cutadapt.do = not options.skip_cutadapt
+    manager.update_config(cfg, options, "cutadapt")
 
+
+    # ----------------------------------------------------  others
     cfg.input_directory = os.path.abspath(options.input_directory)
     cfg.input_pattern = options.input_pattern
 
@@ -132,25 +133,20 @@ def main(args=None):
     cfg.mark_duplicates.do = options.do_mark_duplicates
     cfg.RNAseQC.do = options.do_rnaseq_qc
 
-
-    cfg.fastq_screen.do = options.do_fastq_screen
-    # get absolute path
-    fastq_screen_conf = os.path.abspath(options.fastq_screen_conf)
-    cfg.fastq_screen.conf = fastq_screen_conf
-
-
-    # copy the fastq_screen.conf input or default file
-    import shutil
-    import sequana_pipelines.rnaseq
-    if options.fastq_screen_conf:
-        assert os.path.exists(fastq_screen_conf)
-        shutil.copy(fastq_screen_conf, manager.workdir)
+    # ----------------------------------------------------- fastq_screen conf
+    if options.do_fastq_screen:
         cfg.fastq_screen.do = True
+        manager.exists(options.fastq_screen_conf)
+        cfg.fastq_screen_conf = os.path.abspath(options.fastq_screen_conf)
+        # copy the fastq_screen.conf input or default file
+        shutil.copy(fastq_screen_conf, manager.workdir)
     else:
-        # Just copy the default file
+        cfg.fastq_screen.do = False
+        # copy the default fastq_screen conf file 
+        import sequana_pipelines.rnaseq
         shutil.copy(os.path.join(sequana_pipelines.rnaseq.__path__[0] ,
             "fastq_screen.conf"), manager.workdir)
-    
+
 
     # finalise the command and save it; copy the snakemake. update the config
     # file and save it.

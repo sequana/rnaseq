@@ -25,7 +25,7 @@ Usage
 ::
 
     sequana_pipelines_rnaseq --help
-    sequana_pipelines_rnaseq --input-directory DATAPATH --genome-directory --aligner STAR
+    sequana_pipelines_rnaseq --input-directory DATAPATH --genome-directory --aligner star
 
 This creates a directory with the pipeline and configuration file. You will then need 
 to execute the pipeline::
@@ -78,13 +78,24 @@ to be used with the pipeline. Each rule used in the pipeline may have a section 
 Changelog
 ~~~~~~~~~
 
-0.9.3: if a fastq_screen.conf is provided, we switch the fastqc_screen section
-ON automatically.
-0.9: Major refactorisation. remove sartools, kraken rules. Indexing is now
-optional and can be set in the configuration. Configuration file is simplified
-with a general section to enter the genome location and aligner. Fixed rules in
-sequana (0.8.0) that were not up-to-date with several executables used in the
-pipeline including picard, fastq_screen, etc. See Sequana Changelog for details
-with respect to rules changes. Copying the feature counts in main directory
-ready to use for a differential analysis.
+========= ====================================================================
+Version   Description
+========= ====================================================================
+0.9.5     * Fixed https://github.com/sequana/sequana/issues/571
+          * More cutadapt commands and sanity checks
+0.9.4  
+0.9.3     if a fastq_screen.conf is provided, we switch the fastqc_screen 
+          section ON automatically
+0.9.0     **Major refactorisation.**
 
+          * remove sartools, kraken rules. 
+          * Indexing is now optional and can be set in the configuration.
+          * Configuration file is simplified  with a general section to enter
+            the genome location and aligner. 
+          * Fixed rules in  sequana (0.8.0) that were not up-to-date with
+            several executables used in the  pipeline including picard,
+            fastq_screen, etc. See Sequana Changelog for details with respect
+            to rules changes. 
+          * Copying the feature counts in main directory  ready to use for 
+            a differential analysis.
+========= ====================================================================

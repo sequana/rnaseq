@@ -21,7 +21,7 @@ def test_standalone_subprocess():
 def _test_standalone_script():
     directory = tempfile.TemporaryDirectory()
     import sequana_pipelines.rnaseq.main as m
-    sys.argv = ["test", "--fastq-directory", sharedir, "--output-directory", directory.name]
+    sys.argv = ["test", "--input-directory", sharedir, "--working-directory", directory.name]
     m.main()
 
 def test_version():
