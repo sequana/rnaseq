@@ -83,6 +83,7 @@ Version   Description
 ========= ====================================================================
 0.9.5     * Fixed https://github.com/sequana/sequana/issues/571
           * More cutadapt commands and sanity checks
+	  * Fixed bowtie2 options import in rnaseq.rules
 0.9.4  
 0.9.3     if a fastq_screen.conf is provided, we switch the fastqc_screen 
           section ON automatically
