@@ -11,8 +11,15 @@ from sequana import snaketools as sm
 sm.init("rnaseq.rules", globals())
 
 
+
+def error(msg):
+    from sequana.pipelines_common import error as err
+    err(msg, "rnaseq")
+
 # This must be defined before the include
 configfile: "config.yaml"
+
+# FIXME what is it for ?
 __snakefile__ = srcdir(__snakefile__)
 
 # Generic include of some dynamic modules
@@ -26,6 +33,9 @@ exec(open(sequana.modules["mark_duplicates_dynamic"], "r").read())
 
 
 manager = sm.PipelineManager("rnaseq", config)
+from sequana import SequanaConfig
+if os.path.exists("schema.yaml"):
+    SequanaConfig("config.yaml").check_config_with_schema("schema.yaml")
 
 __data__input = manager.getrawdata()
 
@@ -37,13 +47,13 @@ genome_directory = os.path.abspath(config["general"]["genome_directory"])
 genome_name = genome_directory.rsplit("/", 1)[1]
 
 __prefix_name__ = genome_directory + "/" + genome_name
-__fastq_file__ = __prefix_name__ + ".fa"
+__fasta_file__ = __prefix_name__ + ".fa"
 __gff_file__   = __prefix_name__ + ".gff"
 
 # check existence of fasta and gff before starting;
-for this in [__fastq_file__, __gff_file__]:
+for this in [__fasta_file__, __gff_file__]:
     if os.path.exists(this) is False:
-        raise IOError("File {} not found".format(__fastq_file__))
+        raise IOError("File {} not found".format(__fasta_file__))
 
 
 # create sequence dict file. Looks like it is used for picard tools.
@@ -55,19 +65,37 @@ include: sm.modules["create_sequence_dictionary"]
 final_output.extend([__create_sequence_dictionary__output])
 
 
-# we always want to do the bowtie1 index since we then search for rRNA with
-# bowtie1  (FIXME ?)
-if config['general']['indexing']:
-    __bowtie1_index_ref__fasta =         __fastq_file__
-    __bowtie1_index_ref__output_done =   __prefix_name__ + ".1.ebwt"
-    __bowtie1_index_ref__output_prefix = __prefix_name__
-    __bowtie1_index_ref__log =           "logs/indexing/bowtie_genome.log"
-    include: bowtie1_index_dynamic("ref")
-# with or without indexing, we now set the bowtie2_index variable
+
+do_indexing = manager.config.general.indexing
+force_indexing = manager.config.general.force_indexing
+# =========================================================================== bowtie1
+__bowtie1_index_ref__output_done   = __prefix_name__ + ".1.ebwt"
 __bowtie1_index__ = __prefix_name__
 
+msg_error_indexing_exists = "Indexing file for {} exists already ({}). "+\
+    "Set general::indexing to False or general::force_indexing to True "+\
+    "in the config file"
+msg_error_indexing_notfound = "Indexing file for {} not found ({}). "+\
+    "Set general::indexing to True in the config file"
 
-# rRNA genome
+if os.path.exists(__bowtie1_index_ref__output_done) and do_indexing is False:
+    pass # index exists, no need to do it, everything should be fine
+elif (os.path.exists(__bowtie1_index_ref__output_done) and do_indexing and force_indexing) or \
+    (os.path.exists(__bowtie1_index_ref__output_done) is False and do_indexing):
+    # if the file does not exists and we ask for the indexing
+    # OR if the file exists but we want to overwrite it 
+    __bowtie1_index_ref__fasta         = __fasta_file__
+    #__bowtie1_index_ref__output_done   # defined above
+    __bowtie1_index_ref__output_prefix = __prefix_name__
+    __bowtie1_index_ref__log           = "logs/indexing/bowtie_genome.log"
+    include: bowtie1_index_dynamic("ref")
+elif os.path.exists(__bowtie1_index_ref__output_done) and do_indexing and force_indexing is False:
+    error(msg_error_indexing_exists.format("bowtie1", __bowtie1_index_ref__output_done))
+elif os.path.exists(__bowtie1_index_ref__output_done) is False and do_indexing is False:
+    error(msg_error_indexing_notfound.format("bowtie1", __bowtie1_index_ref__output_done))
+
+
+# =========================================================================== rRNA genome
 if manager.config.general.rRNA_file:
     __bowtie1_index_rna__fasta =            __prefix_name + config["general"]["rRNA_file"]
     __bowtie1_index_rna__output_done =      __prefix_name__ + "_rRNA.1.ebwt"
@@ -77,14 +105,15 @@ if manager.config.general.rRNA_file:
 else:
     # extract rRNA feature from GFF and get corresponding fasta
     # and gff. if no match for rRNA, save empty fasta as AAAAAAAAAAA
-    __extract_fasta_from_bed__input =       __fastq_file__
-    __extract_fasta_from_bed__gff =         __gff_file__ 
+    __extract_fasta_from_bed__input =       __fasta_file__
+    __extract_fasta_from_bed__gff =         __gff_file__
     __extract_fasta_from_bed__feature =     config["general"]["rRNA_feature"]
     __extract_fasta_from_bed__output =          __prefix_name__ + "_rRNA.fa"
     __extract_fasta_from_bed__output_features = __prefix_name__ + "_rRNA.gff"
     __extract_fasta_from_bed__log =             "logs/indexing/get_rRNA.log"
     include: sm.modules["extract_fasta_from_bed"]
 
+    # This is fast, so we do it again
     __bowtie1_index_rna__fasta = __extract_fasta_from_bed__output
     __bowtie1_index_rna__output_done = __prefix_name__ + "_rRNA.1.ebwt"
     __bowtie1_index_rna__output_prefix = __prefix_name__ + "_rRNA"
@@ -92,29 +121,46 @@ else:
     include: bowtie1_index_dynamic("rna")
     __RNA_index__ = __bowtie1_index_rna__output_prefix
 
-# Build the bowtie2 index
+# ============================================================================ bowtie2 index
+
 if manager.config.general.aligner == "bowtie2":
-    if config['general']['indexing']:
+    __bowtie2_index_ref__output_done   = __prefix_name__ + ".1.bt2"
+    __bowtie2_index__ = __prefix_name__
+    if os.path.exists(__bowtie2_index_ref__output_done) and do_indexing is False:
+        pass # index exists, no need to do it, everything should be fine
+    elif (os.path.exists(__bowtie2_index_ref__output_done) and do_indexing and force_indexing) or \
+        (os.path.exists(__bowtie2_index_ref__output_done) is False and do_indexing):
         # indexing for bowtie2
-        __bowtie2_index_ref__fasta =            __fastq_file__
+        __bowtie2_index_ref__fasta =            __fasta_file__
         __bowtie2_index_ref__output_done =      __prefix_name__ + ".1.bt2"
         __bowtie2_index_ref__output_prefix =    __prefix_name__
         __bowtie2_index_ref__log = "logs/indexing/bowtie2_genome.log"
         include: bowtie2_index_dynamic("ref")
         expected_output.extend([__bowtie2_index_ref__output_done])
-    # with or without indexing, we now set the bowtie2_index variable
-    __bowtie2_index__ = __prefix_name__
+    elif os.path.exists(__bowtie2_index_ref__output_done) and do_indexing and force_indexing is False:
+        error(msg_error_indexing.format("bowtie2", __bowtie2_index_ref__output_done))
+    elif os.path.exists(__bowtie2_index_ref__output_done) is False and do_indexing is False:
+        error(msg_error_indexing_notfound.format("bowtie2", __bowtie2_index_ref__output_done))
+
 elif manager.config.general.aligner  == "star":
-    if config['general']['indexing']:
+    __star_index__output_done = genome_directory +  "/SAindex"
+    __star_dir__ = genome_directory
+    if os.path.exists(__star_index__output_done) and do_indexing is False:
+        pass # index exists, no need to do it, everything should be fine
+    elif (os.path.exists(__star_index__output_done) and do_indexing and force_indexing) or \
+        (os.path.exists(__star_index__output_done) is False and do_indexing):
         # indexing for star
-        __star_index__fasta =  __fastq_file__
-        __star_index__output_done = genome_directory +  "/SAindex"
+        __star_index__fasta =  __fasta_file__
+        #__star_index__output_done = genome_directory +  "/SAindex"
         __star_index__output_dir =  genome_directory
         __star_index__log = "logs/indexing/star_genome.log"
         include: sm.modules["star_index"]
         expected_output.extend([genome_directory +  "/SAindex"])
-    __star_dir__ = genome_directory
-    __star_index__output_done = genome_directory +  "/SAindex"
+    elif os.path.exists(__star_index__output_done) and do_indexing and force_indexing is False:
+        error(msg_error_indexing_exists.format("star", __star_index__output_done))
+    elif os.path.exists(__star_index__output_done) is False and do_indexing is False:
+        error(msg_error_indexing_notfound.format("star", __star_index__output_done))
+
 
 
 
@@ -200,14 +246,26 @@ expected_output.extend(expand(__fastqc_filtered__output_done, sample=manager.sam
 
 
 
-# Decompress fastq.gz file before to run bowtie1
-__unpigz_R1__input = manager.getname("cutadapt", "_R1_.cutadapt.fastq.gz")
-__unpigz_R1__output = manager.getname("cutadapt", "_R1_.cutadapt.fastq")
+# Decompress fastq.gz file before running bowtie1
+if manager.config.cutadapt.do:
+    __unpigz_R1__input = manager.getname("cutadapt", "_R1_.cutadapt.fastq.gz")
+    __unpigz_R1__output = manager.getname("cutadapt", "_R1_.cutadapt.fastq")
+else:
+    __unpigz_R1__input = __data__input
+    __unpigz_R1__output = manager.getname("cutadapt", "_R1_.cutadapt.fastq")
+
+#print(__unpigz_R1__input, __unpigz_R1__output)
+#print(__data__input)
+
 include: dynamic_unpigz("R1", manager)
 __unpigz__output = [__unpigz_R1__output]
 if manager.paired:
-    __unpigz_R2__input = manager.getname("cutadapt", "_R2_.cutadapt.fastq.gz")
-    __unpigz_R2__output = manager.getname("cutadapt", "_R2_.cutadapt.fastq")
+    if manager.config.cutadapt.do:
+        __unpigz_R2__input = manager.getname("cutadapt", "_R2_.cutadapt.fastq.gz")
+        __unpigz_R2__output = manager.getname("cutadapt", "_R2_.cutadapt.fastq")
+    else:
+        __unpigz_R2__input = __data__input
+        __unpigz_R2__output = manager.getname("cutadapt", "_R2_.cutadapt.fastq")
     include: dynamic_unpigz("R2", manager)
     __unpigz__output += [__unpigz_R2__output]
 
@@ -257,7 +315,7 @@ elif manager.config.general.aligner == "star":
     __star_mapping__input = __clean_fastq__output
     __star_mapping__index_done = __star_index__output_done
     __star_mapping__index = __star_dir__
-    __star_mapping__ref = __fastq_file__
+    __star_mapping__ref = __fasta_file__
     __star_mapping__logs = manager.getname("star_mapping", ".logs")
     __star_mapping__output_prefix1 = manager.getname("star_mapping", "_init_")
     __star_mapping__output_prefix2 = manager.getname("star_mapping", "_")
@@ -284,7 +342,7 @@ if manager.config.igvtools.do:
     if manager.config.igvtools.chrom_sizes_file.strip():
         pass
     else:
-      config["igvtools"]["chrom_sizes_file"] = __fastq_file__
+      config["igvtools"]["chrom_sizes_file"] = __fasta_file__
     __igvtools__input = __mapping_output
     __igvtools__output = manager.getname("igvtools", ".tdf")
     __igvtools__log = manager.getname("igvtools", ".logs")
@@ -335,13 +393,14 @@ if config["mark_duplicates"]["do"]:
 
 if config["RNAseQC"]["do"]:
     __reorderSam__input_sam = __mark_duplicates_ref__output
-    __reorderSam__input_genome = __fastq_file__
+    __reorderSam__input_genome = __fasta_file__
     __reorderSam__logs = manager.getname("reorderSam", ".logs")
     __reorderSam__output = manager.getname("reorderSam", "_reorder.bam")
     include: sm.modules["reorderSam"]
     expected_output.extend(expand(__reorderSam__output, sample=manager.samples))
+
     __RNAseQC__input_bam = expand(__mark_duplicates_ref__output, sample=manager.samples)
-    __RNAseQC__input_genome = __fastq_file__
+    __RNAseQC__input_genome = __fasta_file__
     if os.path.exists(config['RNAseQC']['gtf_file']):
         __RNAseQC__input_gtf = config['RNAseQC']['gtf_file']
     else:
@@ -361,12 +420,12 @@ if config["RNAseQC"]["do"]:
 __multiqc__input = expected_output
 __multiqc__input_dir = "."
 __multiqc__logs = "multiqc/multiqc.log"
-__multiqc__output = config['multiqc']['output-directory'] + "/multiqc_report.html"
+__multiqc__output = config['multiqc']['output_directory'] + "/multiqc_report.html"
 if config['multiqc']['config_file']:
     __multiqc__options = " -c " + config['multiqc']['config_file'] + " "+config['multiqc']['options']
 else :
     __multiqc__options = config['multiqc']['options']
-__multiqc__output_dir = config['multiqc']['output-directory']
+__multiqc__output_dir = config['multiqc']['output_directory']
 
 include: sm.modules["multiqc"]
 final_output.extend([__multiqc__output])
@@ -431,7 +490,7 @@ onsuccess:
 
         # Create a cleanup python file to clean a sub-directory
         sm.create_cleanup(proj)
-            
+
     tocopy = expand(__feature_counts__output_count, sample=manager.samples)
     try:os.mkdir("feature_counts")
     except:pass

@@ -68,19 +68,26 @@ class Options(argparse.ArgumentParser):
         pipeline_group.add_argument("--aligner", dest="aligner", required=True,
             choices=['bowtie2', 'bowtie1', 'star'],
             help= "a mapper in bowtie, bowtie2, star")
+        pipeline_group.add_argument("--do-indexing", dest="do_indexing", 
+            action="store_true", help="""If bowtie/star indexing file are 
+                not computed, you will need to compute them by setting 
+                this option """)
+        pipeline_group.add_argument("--force-indexing", action="store_true",
+            default=False,
+            help="""If indexing files exists already, but you wish to 
+                create them again, use this option""")
 
         # cutadapt related
         so = CutadaptOptions()
         so.add_options(self)
 
-
         # fastq_screen
         pipeline_group = self.add_argument_group("pipeline_fastq_screen")
         pipeline_group.add_argument("--do-fastq-screen", action="store_true",
-            default=False, 
+            default=False,
             help="run fastq_screen ")
         pipeline_group.add_argument("--fastq-screen-conf",
-            default="fastq_screen.conf", type=str, 
+            default="fastq_screen.conf", type=str,
             help="""a valid fastqc_screen.conf file. See fastq_screen
 documentation for details. In a nutsheel, add a line for each genome you want to
 search for in your input data. Each line is 'DATABASE name path BOWTIE2'. The
@@ -118,6 +125,8 @@ def main(args=None):
     # --------------------------------------------------------- general
     cfg.general.genome_directory = os.path.abspath(options.genome_directory)
     cfg.general.aligner = options.aligner
+    cfg.general.do_indexing = options.do_indexing
+    cfg.general.force_indexing = options.force_indexing
 
     # --------------------------------------------------------- cutadapt
     cfg.cutadapt.do = not options.skip_cutadapt
@@ -127,6 +136,7 @@ def main(args=None):
     # ----------------------------------------------------  others
     cfg.input_directory = os.path.abspath(options.input_directory)
     cfg.input_pattern = options.input_pattern
+    cfg.input_readtag = options.input_readtag
 
     cfg.igvtools.do = options.do_igvtools
     cfg.coverage.do = options.do_bam_coverage

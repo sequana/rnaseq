@@ -1,4 +1,4 @@
-# Schema validator for the quality_control
+# Schema validator for the rnaseq pipeline
 # author: Thomas Cokelaer
 
 type: map
@@ -12,6 +12,7 @@ mapping:
     "input_pattern":
         type: str
         required: False
+
     "fastqc":
         type: map
         mapping:
@@ -21,10 +22,202 @@ mapping:
                 type: str
                 required: False
 
+    "general":
+        type: map
+        mapping:
+            "aligner":
+                type: str
+                required: True 
+                enum: ["bowtie2", "bowtie1", "star"] 
+            "genome_directory":
+                required: True
+                type: str
+            "rRNA_file": 
+                type: str
+            "rRNA_feature": 
+                type: str
+            "indexing":
+                type: bool
+            "force_indexing":
+                type: bool
+
+    "requirements":
+        type: str
+
+    "sequencing":
+        type: map
+        mapping:
+            "platform": 
+                type: str
+            "instrument": 
+                type: str
+            "flowcell":
+                type: str
+
+    "cutadapt":
+        type: map
+        mapping:
+            "do":
+                type: bool
+                required: True
+            "tool_choice":
+                type: str
+                enum: [cutadapt,atropos]
+                required: True
+            "adapter_choice":
+                type: str
+                required: False
+            "design_file":
+                type: str
+                required: False
+                pattern: .*
+            "fwd":
+                type: str
+                required: False
+            "rev":
+                type: str
+                required: False
+            "m":
+                type: int
+                range: {min: 0}
+                required: True
+            "mode":
+                type: str
+                enum: [b, g, a]
+                required: True
+            "options":
+                type: str
+                required: False
+            "quality":
+                type: int
+                range: {max: 40, min: 0}
+                required: False
+            "threads":
+                type: int
+                required: True
+                range: { min: 1 }
+
     "multiqc":
         type: map
         mapping:
             "options": 
                 type: str
-            "indir": 
+            "output_directory":
                 type: str
+            "config_file":
+                type: str
+
+    "feature_counts":
+        type: map
+        mapping:
+            "do":
+                type: bool
+            "options":
+                type: str
+            "threads":
+                type: int
+                range: { min: 1, max: 8 }
+    'bowtie1_mapping_ref':
+        type: map
+        mapping:
+            "options":
+                type: str
+            "threads":
+                type: int
+                required: True
+                range: { min: 1 }
+    'fastq_screen':
+        type: map
+        mapping:
+            "do":
+                type: bool
+            "conf":
+                type: str
+            "options":
+                type: str
+            "aligner":
+                type: str
+            "report":
+                type: bool
+
+    'coverage':
+        type: map
+        mapping:
+            "do":
+                type: bool
+            "binSize":
+                type: int
+            "genomeSize":
+                type: int
+            "extendReads":
+                type: int
+            "minFragmentLength":
+                type: int
+            "maxFragmentLength":
+                type: int
+            "threads":
+                type: int
+                required: True
+                range: { min: 1, max: 8 }
+
+    'mark_duplicates':
+        type: map
+        mapping:
+            "do":
+                type: bool
+            "remove":
+                type: bool
+            "tmpdir":
+                type: str
+            "threads":
+                type: int
+                required: True
+                range: { min: 1, max: 8 }
+    'bowtie1_mapping_rna':
+        type: map
+        mapping:
+            "do":
+                type: bool
+            "options":
+                type: str
+            "threads":
+                type: int
+                required: True
+                range: { min: 1}
+    'igvtools':
+        type: map
+        mapping:
+            "do":
+                type: bool
+            "chrom_sizes_file":
+                type: str
+    'RNAseQC':
+        type: map
+        mapping:
+            "do":
+                type: bool
+            "gtf_file":
+                type: str
+            "BWArRNA_file":
+                type: str
+            "options":
+                type: str
+    'bowtie2_mapping_ref':
+        type: map
+        mapping:
+            "options":
+                type: str
+            "threads":
+                type: int
+                required: True
+                range: { min: 1}
+    'star_mapping':
+        type: map
+        mapping:
+            "options":
+                type: str
+            "threads":
+                type: int
+                required: True
+                range: { min: 1}
+

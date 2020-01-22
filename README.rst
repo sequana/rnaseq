@@ -81,9 +81,16 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.9.6     * Fixed empty read tag in the configuration file
+          * Possiblity to switch off cutadapt section
+          * Fixing bowtie2 rule in sequana and update the pipeline accordingly
+          * Include a schema file
+          * output-directory parameter renamed into output_directory (multiqc 
+            section)
+          * handle stdout correctly in fastqc, bowtie1, bowtie2 rules
 0.9.5     * Fixed https://github.com/sequana/sequana/issues/571
           * More cutadapt commands and sanity checks
-	  * Fixed bowtie2 options import in rnaseq.rules
+          * Fixed bowtie2 options import in rnaseq.rules
 0.9.4  
 0.9.3     if a fastq_screen.conf is provided, we switch the fastqc_screen 
           section ON automatically
