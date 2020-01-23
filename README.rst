@@ -81,6 +81,7 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.9.8     * Fix indexing for bowtie1 to not be done if aligner is different
 0.9.7     * fix typo found in version 0.9.6
 0.9.6     * Fixed empty read tag in the configuration file
           * Possiblity to switch off cutadapt section

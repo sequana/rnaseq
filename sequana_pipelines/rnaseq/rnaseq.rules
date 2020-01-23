@@ -69,8 +69,6 @@ final_output.extend([__create_sequence_dictionary__output])
 do_indexing = manager.config.general.indexing
 force_indexing = manager.config.general.force_indexing
 # =========================================================================== bowtie1
-__bowtie1_index_ref__output_done   = __prefix_name__ + ".1.ebwt"
-__bowtie1_index__ = __prefix_name__
 
 msg_error_indexing_exists = "Indexing file for {} exists already ({}). "+\
     "Set general::indexing to False or general::force_indexing to True "+\
@@ -78,21 +76,25 @@ msg_error_indexing_exists = "Indexing file for {} exists already ({}). "+\
 msg_error_indexing_notfound = "Indexing file for {} not found ({}). "+\
     "Set general::indexing to True in the config file"
 
-if os.path.exists(__bowtie1_index_ref__output_done) and do_indexing is False:
-    pass # index exists, no need to do it, everything should be fine
-elif (os.path.exists(__bowtie1_index_ref__output_done) and do_indexing and force_indexing) or \
-    (os.path.exists(__bowtie1_index_ref__output_done) is False and do_indexing):
-    # if the file does not exists and we ask for the indexing
-    # OR if the file exists but we want to overwrite it 
-    __bowtie1_index_ref__fasta         = __fasta_file__
-    #__bowtie1_index_ref__output_done   # defined above
-    __bowtie1_index_ref__output_prefix = __prefix_name__
-    __bowtie1_index_ref__log           = "logs/indexing/bowtie_genome.log"
-    include: bowtie1_index_dynamic("ref")
-elif os.path.exists(__bowtie1_index_ref__output_done) and do_indexing and force_indexing is False:
-    error(msg_error_indexing_exists.format("bowtie1", __bowtie1_index_ref__output_done))
-elif os.path.exists(__bowtie1_index_ref__output_done) is False and do_indexing is False:
-    error(msg_error_indexing_notfound.format("bowtie1", __bowtie1_index_ref__output_done))
+if manager.config.general.aligner == "bowtie1":
+    __bowtie1_index_ref__output_done   = __prefix_name__ + ".1.ebwt"
+    __bowtie1_index__ = __prefix_name__
+
+    if os.path.exists(__bowtie1_index_ref__output_done) and do_indexing is False:
+        pass # index exists, no need to do it, everything should be fine
+    elif (os.path.exists(__bowtie1_index_ref__output_done) and do_indexing and force_indexing) or \
+        (os.path.exists(__bowtie1_index_ref__output_done) is False and do_indexing):
+        # if the file does not exists and we ask for the indexing
+        # OR if the file exists but we want to overwrite it 
+        __bowtie1_index_ref__fasta         = __fasta_file__
+        #__bowtie1_index_ref__output_done   # defined above
+        __bowtie1_index_ref__output_prefix = __prefix_name__
+        __bowtie1_index_ref__log           = "logs/indexing/bowtie_genome.log"
+        include: bowtie1_index_dynamic("ref")
+    elif os.path.exists(__bowtie1_index_ref__output_done) and do_indexing and force_indexing is False:
+        error(msg_error_indexing_exists.format("bowtie1", __bowtie1_index_ref__output_done))
+    elif os.path.exists(__bowtie1_index_ref__output_done) is False and do_indexing is False:
+        error(msg_error_indexing_notfound.format("bowtie1", __bowtie1_index_ref__output_done))
 
 
 # =========================================================================== rRNA genome
