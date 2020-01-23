@@ -125,7 +125,7 @@ def main(args=None):
     # --------------------------------------------------------- general
     cfg.general.genome_directory = os.path.abspath(options.genome_directory)
     cfg.general.aligner = options.aligner
-    cfg.general.do_indexing = options.do_indexing
+    cfg.general.indexing = options.do_indexing
     cfg.general.force_indexing = options.force_indexing
 
     # --------------------------------------------------------- cutadapt

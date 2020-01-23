@@ -25,7 +25,7 @@ Usage
 ::
 
     sequana_pipelines_rnaseq --help
-    sequana_pipelines_rnaseq --input-directory DATAPATH --genome-directory --aligner star
+    sequana_pipelines_rnaseq --input-directory DATAPATH --genome-directory genome --aligner star
 
 This creates a directory with the pipeline and configuration file. You will then need 
 to execute the pipeline::

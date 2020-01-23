@@ -11,10 +11,10 @@ from sequana import snaketools as sm
 sm.init("rnaseq.rules", globals())
 
 
-
 def error(msg):
     from sequana.pipelines_common import error as err
     err(msg, "rnaseq")
+
 
 # This must be defined before the include
 configfile: "config.yaml"
@@ -58,8 +58,8 @@ for this in [__fasta_file__, __gff_file__]:
 
 # create sequence dict file. Looks like it is used for picard tools.
 # FIXME: see if we cannot simplify this rule and merge it with the picard rule
-__create_sequence_dictionary__reference = __fastq_file__
-__create_sequence_dictionary__output =    __fastq_file__ + ".dict"
+__create_sequence_dictionary__reference = __fasta_file__
+__create_sequence_dictionary__output =    __fasta_file__ + ".dict"
 __create_sequence_dictionary__log =       "logs/indexing/create_sequence_dictionary.log"
 include: sm.modules["create_sequence_dictionary"]
 final_output.extend([__create_sequence_dictionary__output])
