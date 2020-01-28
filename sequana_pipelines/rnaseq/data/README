@@ -1,0 +1,38 @@
+# to save space, we will only keep chrI and chrXII in the GFF, fasta and raw
+data
+
+# first the gff
+mkdir temp
+mkdir Saccer3
+
+# Get the Saccer3 gff and fasta
+
+grep "chrI " Saccer3.gff > new.gff
+grep "chrXII	" Saccer3.gff >> new.gff
+cp new.gff  ./Saccer3/Saccer3.gff
+
+# then the fasta using Python
+from sequana import FastA
+f = FastA("Saccer3.fa")
+with open("Saccer_new.fa", "w") as fout: 
+    for name, seq in zip(f.names, f.sequences): 
+        if name in ['chrI', 'chrXII']: 
+            fout.write(">{}\n{}\n".format(name, seq))                                   
+
+cp Saccer3_new.fa ./Saccer3/Saccer3.fa
+
+
+cd Saccer3
+bwa index Saccer3.fa
+cd ..
+
+# extract only reads that mapped onto the chrI or chrXII (to get smaller fastq
+files)
+
+bwa mem Saccer3/Saccer3.fa WT_ATCACG_L001_R1_001.fastq > WT.sam
+bwa mem Saccer3/Saccer3.fa KO_ATCACG_L001_R1_001.fastq > KO.sam
+
+mkdir temp
+from sequana import tools
+tools.bam_to_mapped_umpaped("WT.sam", "temp")
+tools.bam_to_mapped_umpaped("KO.sam", "temp")
