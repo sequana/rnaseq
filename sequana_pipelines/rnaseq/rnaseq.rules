@@ -10,11 +10,9 @@ from os.path import join
 from sequana import snaketools as sm
 sm.init("rnaseq.rules", globals())
 
-
 def error(msg):
     from sequana.pipelines_common import error as err
     err(msg, "rnaseq")
-
 
 # This must be defined before the include
 configfile: "config.yaml"
@@ -33,9 +31,6 @@ exec(open(sequana.modules["mark_duplicates_dynamic"], "r").read())
 
 
 manager = sm.PipelineManager("rnaseq", config)
-from sequana import SequanaConfig
-if os.path.exists("schema.yaml"):
-    SequanaConfig("config.yaml").check_config_with_schema("schema.yaml")
 
 __data__input = manager.getrawdata()
 
@@ -394,7 +389,11 @@ if config["mark_duplicates"]["do"]:
 
 
 if config["RNAseQC"]["do"]:
-    __reorderSam__input_sam = __mark_duplicates_ref__output
+    if config["mark_duplicates"]['do']:
+        __reorderSam__input_sam = __mark_duplicates_ref__output
+    else:
+        __reorderSam__input_sam = __add_read_group__output
+
     __reorderSam__input_genome = __fasta_file__
     __reorderSam__logs = manager.getname("reorderSam", ".logs")
     __reorderSam__output = manager.getname("reorderSam", "_reorder.bam")
