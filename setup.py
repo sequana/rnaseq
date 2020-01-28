@@ -51,7 +51,8 @@ setup(
 
     # package installation
     packages = ["sequana_pipelines.rnaseq",
-        'sequana_pipelines.rnaseq.data' ],
+        'sequana_pipelines.rnaseq.data' ,
+        'sequana_pipelines.rnaseq.data.Saccer3' ],
 
     install_requires = "sequana",
 
