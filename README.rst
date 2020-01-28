@@ -82,6 +82,13 @@ Changelog
 Version   Description
 ========= ====================================================================
 0.9.8     * Fix indexing for bowtie1 to not be done if aligner is different
+          * add new options: --feature-counts-options and --do-rnaseq-qc,
+            --rRNA-feature
+          * Based on the input GFF, we now check the validity of the rRNA
+            feature and feature counts options to check whether the feature 
+            exists in the GFF
+          * schema is now used to check the config file values
+          * add a data test for testing and documentation
 0.9.7     * fix typo found in version 0.9.6
 0.9.6     * Fixed empty read tag in the configuration file
           * Possiblity to switch off cutadapt section
