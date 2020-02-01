@@ -411,7 +411,7 @@ if config["rnaseqc2"]["do"]:
     if os.path.exists(config['rnaseqc2']['gtf_file']):
         __rnaseqc2__input_gtf = config['rnaseqc2']['gtf_file']
     elif os.path.exists(genome_directory + os.sep + config['rnaseqc2']['gtf_file']):
-        __rnaseqc2__input_gtf = genome_directory + os.sep + config['RNAseQC']['gtf_file']
+        __rnaseqc2__input_gtf = genome_directory + os.sep + config['rnaseqc2']['gtf_file']
     else:
         error("Could not find {} locally or in {}".format(
             config['rnaseqc2']['gtf_file'],
