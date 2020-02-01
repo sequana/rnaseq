@@ -106,8 +106,12 @@ feature type, -g by a valid attribute name and -s  by the value 0 (unstranded),
         pipeline_group.add_argument('--do-igvtools', action="store_true")
         pipeline_group.add_argument('--do-bam-coverage', action="store_true")
         pipeline_group.add_argument('--do-mark-duplicates', action="store_true")
-        pipeline_group.add_argument('--do-rnaseq-qc', action="store_true",
-            help="not yet implemented")
+
+        pipeline_group = self.add_argument_group("pipeline_RNAseQC")
+        pipeline_group.add_argument('--do-rnaseqc', action="store_true",
+            help="do RNA-seq QC using RNAseQC v2")
+        pipeline_group.add_argument('--rnaseqc-gtf-file',
+            help="The GTF file to be used")
 
 
 def main(args=None):
@@ -153,7 +157,10 @@ def main(args=None):
     cfg.igvtools.do = options.do_igvtools
     cfg.coverage.do = options.do_bam_coverage
     cfg.mark_duplicates.do = options.do_mark_duplicates
-    cfg.RNAseQC.do = options.do_rnaseq_qc
+
+    # -------------------------------------------------------- RNAseqQC
+    cfg.rnaseqc2.do = options.do_rnaseqc
+    cfg.rnaseqc2.gtf_file = options.rnaseqc_gtf_file
 
     # ----------------------------------------------------- fastq_screen conf
     if options.do_fastq_screen:
@@ -161,7 +168,7 @@ def main(args=None):
         manager.exists(options.fastq_screen_conf)
         cfg.fastq_screen_conf = os.path.abspath(options.fastq_screen_conf)
         # copy the fastq_screen.conf input or default file
-        shutil.copy(fastq_screen_conf, manager.workdir)
+        shutil.copy(options.fastq_screen_conf, manager.workdir)
     else:
         cfg.fastq_screen.do = False
         # copy the default fastq_screen conf file 

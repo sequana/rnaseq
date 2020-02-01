@@ -191,14 +191,12 @@ mapping:
                 type: bool
             "chrom_sizes_file":
                 type: str
-    'RNAseQC':
+    'rnaseqc2':
         type: map
         mapping:
             "do":
                 type: bool
             "gtf_file":
-                type: str
-            "BWArRNA_file":
                 type: str
             "options":
                 type: str

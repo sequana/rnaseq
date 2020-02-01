@@ -20,30 +20,20 @@
 #-------------------------------------------------------------------------------
 
 # Title to use for the report.
-title: "Project Name"
-subtitle: "Titre de l'analyse"           # Grey text below title
-intro_text: "MultiQC reports summarise analysis results produced with RNA-seq sequana pipeline "          # Set your own text
+title: "BXXX"
+subtitle: "RNA-seq analysis" 
+intro_text: "Report summarising cleaning (cutadapt section) and mapping (stat/bowtie sections) of your FastQ files, as well as feature counts (featureCounts section) and quick contaminant search (fastq screen section)"
 
 # Add generic information to the top of reports
 report_header_info:
-#- Example Config:: 'This is arbitrary'
-#- Another field:: 'Loaded from <code>multiqc_config_example.yaml</code>'
-    - Contact E-mail: '<login>@example.com'
-    - Application Type: 'Stranded RNA-seq'
-    - Project Type: 'Differential gene expression'
-    - Sequencing Platform: 'HiSeq 2500 High Output V4'
-    - Sequencing Setup: 'SR65'
-    - Library type : 'Illumina TruSeq'
+   - Authors: '<a href="http://github.com/sequana/sequana">Sequana developers</a>'
+   - Want to know more?: 'See the <a href="http://sequana.readthedocs.io" target="_blank">Sequana</a> and <a href="http://github.com/sequana/sequana_rnaseq/" target="_blank"> sequana_rnaseq pipeline</a> documentation.'
+   - Citations: 'If you used Sequanix, Sequana, Sequana_coverage tool, or any Sequana pipelines, please see <a href="http:/    /sequana.readthedocs.io">How to cite ?</a> section. In particular, if you use this report in a publication, please cite Sequana.'
+   - Contact E-mail: ''
+#   - Project Type: 'Differential gene expression'
+
 
 #-------------------------------------------------------------------------------
-
-
-# Specify a custom logo to add to reports (uncomment to use)
-#custom_logo: '         # '/path/to/logo.png'
-#custom_logo_url: ''    # 'https://www.example.com'
-#custom_logo_title: ''  # 'Our Institute Name'
-
-
 
 
 
@@ -126,4 +116,5 @@ table_columns_visible:
     FastQC:
         percent_fails: False
         total_sequences: True
-
+#fastqc_config:
+#fastqc_theoretical_gc: 'mm10_genome'

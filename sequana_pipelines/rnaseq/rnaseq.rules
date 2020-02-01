@@ -91,14 +91,14 @@ if manager.config.general.aligner == "bowtie1":
     elif os.path.exists(__bowtie1_index_ref__output_done) is False and do_indexing is False:
         error(msg_error_indexing_notfound.format("bowtie1", __bowtie1_index_ref__output_done))
 
+if manager.config.general.rRNA_file and manager.config.general.rRNA_feature:
+    error("Either set rRNA_file or rRNA_feature in the config file, not both.")
 
 # =========================================================================== rRNA genome
 if manager.config.general.rRNA_file:
-    __bowtie1_index_rna__fasta =            __prefix_name + config["general"]["rRNA_file"]
-    __bowtie1_index_rna__output_done =      __prefix_name__ + "_rRNA.1.ebwt"
-    __bowtie1_index_rna__output_prefix =    __prefix_name__ + "_rRNA"
-    __bowtie1_index_rna__log = "logs/indexing/bowtie_rRNA.log"
-    __RNA_index__ = __bowtie1_index_rna__output_prefix
+    __bowtie1_index_rna__fasta = config['general']["genome_directory"] + os.sep + config["general"]["rRNA_file"]
+    if os.path.exists(__bowtie1_index_rna__fasta) is False:
+        error("File {} does not exists. Check your config file".format(__bowtie1_index_rna__fasta))
 else:
     # extract rRNA feature from GFF and get corresponding fasta
     # and gff. if no match for rRNA, save empty fasta as AAAAAAAAAAA
@@ -112,11 +112,11 @@ else:
 
     # This is fast, so we do it again
     __bowtie1_index_rna__fasta = __extract_fasta_from_bed__output
-    __bowtie1_index_rna__output_done = __prefix_name__ + "_rRNA.1.ebwt"
-    __bowtie1_index_rna__output_prefix = __prefix_name__ + "_rRNA"
-    __bowtie1_index_rna__log = "logs/indexing/bowtie_rRNA.log"
-    include: bowtie1_index_dynamic("rna")
-    __RNA_index__ = __bowtie1_index_rna__output_prefix
+__bowtie1_index_rna__output_done = __prefix_name__ + "_rRNA.1.ebwt"
+__bowtie1_index_rna__output_prefix = __prefix_name__ + "_rRNA"
+__bowtie1_index_rna__log = "logs/indexing/bowtie_rRNA.log"
+include: bowtie1_index_dynamic("rna")
+__RNA_index__ = __bowtie1_index_rna__output_prefix
 
 # ============================================================================ bowtie2 index
 
@@ -388,7 +388,8 @@ if config["mark_duplicates"]["do"]:
     expected_output.extend(expand(__mark_duplicates_ref__output, sample=manager.samples))
 
 
-if config["RNAseQC"]["do"]:
+# FIXME do we need the mark_duplicates for RNASEQC2 ? is it compulsary ?
+if config["rnaseqc2"]["do"]:
     if config["mark_duplicates"]['do']:
         __reorderSam__input_sam = __mark_duplicates_ref__output
     else:
@@ -398,20 +399,30 @@ if config["RNAseQC"]["do"]:
     __reorderSam__logs = manager.getname("reorderSam", ".logs")
     __reorderSam__output = manager.getname("reorderSam", "_reorder.bam")
     include: sm.modules["reorderSam"]
-    expected_output.extend(expand(__reorderSam__output, sample=manager.samples))
+    #expected_output.extend(expand(__reorderSam__output, sample=manager.samples))
 
-    __RNAseQC__input_bam = expand(__mark_duplicates_ref__output, sample=manager.samples)
-    __RNAseQC__input_genome = __fasta_file__
-    if os.path.exists(config['RNAseQC']['gtf_file']):
-        __RNAseQC__input_gtf = config['RNAseQC']['gtf_file']
+    # Define input of the rnaseqc2 rule.
+    if config["mark_duplicates"]['do']:
+        __rnaseqc2__input_bam = __mark_duplicates_ref__output
     else:
-        __RNAseQC__input_gtf = genome_directory + os.sep + config['RNAseQC']['gtf_file']
-    __RNAseQC__params_directory = "RNAseQC"
-    __RNAseQC__logs = "RNAseQC/RNAseQC.log"
-    __RNAseQC__output_conf = "RNAseQC/sample_index.txt"
-    __RNAseQC__output_figure =  "RNAseQC/Transcript-associated_Reads_metrics.svg"
-    include: sm.modules["RNAseQC"]
-    expected_output.extend([__RNAseQC__output_figure])
+        __rnaseqc2__input_bam = __reorderSam__input_sam
+
+    #__rnaseqc2__input_genome = __fasta_file__
+    if os.path.exists(config['rnaseqc2']['gtf_file']):
+        __rnaseqc2__input_gtf = config['rnaseqc2']['gtf_file']
+    elif os.path.exists(genome_directory + os.sep + config['rnaseqc2']['gtf_file']):
+        __rnaseqc2__input_gtf = genome_directory + os.sep + config['RNAseQC']['gtf_file']
+    else:
+        error("Could not find {} locally or in {}".format(
+            config['rnaseqc2']['gtf_file'],
+            config['general']['genome_directory']
+        ))
+    __rnaseqc2__params_directory = "{sample}/rnaseqc2"
+    __rnaseqc2__logs = "{sample}/rnaseqc2/{sample}.log"
+    __rnaseqc2__params_sample = "{sample}"
+    __rnaseqc2__output_metrics = "{sample}/rnaseqc2/{sample}.metrics.tsv"
+    include: sm.modules["rnaseqc2"]
+    expected_output.extend(expand(__rnaseqc2__output_metrics, sample=manager.samples))
 
 
 # !Reset expected_output variable after multiqc
@@ -477,7 +488,7 @@ onsuccess:
     sm.plot_stats(N=len(manager.samples))
 
     # Main directory
-    report_dir_format = "%(proj)s/report_rnaseq_%(proj)s"
+    report_dir_format = "%(proj)s/report_rnaseq"
     for proj in manager.samples.keys():
         report_dir = report_dir_format % {"proj": proj}
         try:os.mkdir(report_dir)
@@ -499,8 +510,28 @@ onsuccess:
 
     sm.OnSuccess()() # create instance to create main cleanup
 
+    with open(__multiqc__output, "r") as fin:
+        with open(__multiqc__output+"2", "w") as fout:
+            line = fin.readline()
+            while line:
+                if """<a href="http://multiqc.info" target="_blank">""" in line:
+                    line = fin.readline() # read the image
+                    line = fin.readline() # read the ending </a> tag
+                else:
+                    fout.write(line)
+                line = fin.readline() # read the next line
+    shell("mv {} {}".format(__multiqc__output +"2", __multiqc__output))
 
 onerror:
     print("An error occurred. See message above.")
+
+
+
+
+
+
+
+
+
 
 
