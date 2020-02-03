@@ -407,6 +407,7 @@ if config["rnaseqc2"]["do"]:
     else:
         __rnaseqc2__input_bam = __reorderSam__input_sam
 
+    # for multiqc, important that output directories are called rna_seqc
     #__rnaseqc2__input_genome = __fasta_file__
     if os.path.exists(config['rnaseqc2']['gtf_file']):
         __rnaseqc2__input_gtf = config['rnaseqc2']['gtf_file']
@@ -417,10 +418,10 @@ if config["rnaseqc2"]["do"]:
             config['rnaseqc2']['gtf_file'],
             config['general']['genome_directory']
         ))
-    __rnaseqc2__params_directory = "{sample}/rnaseqc2"
-    __rnaseqc2__logs = "{sample}/rnaseqc2/{sample}.log"
+    __rnaseqc2__params_directory = "{sample}/rna_seqc"
+    __rnaseqc2__logs = "{sample}/rna_seqc/{sample}.log"
     __rnaseqc2__params_sample = "{sample}"
-    __rnaseqc2__output_metrics = "{sample}/rnaseqc2/{sample}.metrics.tsv"
+    __rnaseqc2__output_metrics = "{sample}/rna_seqc/{sample}.metrics.tsv"
     include: sm.modules["rnaseqc2"]
     expected_output.extend(expand(__rnaseqc2__output_metrics, sample=manager.samples))
 

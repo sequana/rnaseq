@@ -32,11 +32,9 @@ input_pattern: '*fastq.gz'
 #   erase the index files, which may be large.
 general:
     aligner: star
-    genome_directory: /home/cokelaer/Work/github/sequana_rnaseq/test/Saccer3
-    #rRNA_file: 'Saccer3_rRNA.fa'
+    genome_directory: 
     rRNA_file: ""
-    rRNA_feature: rRNA_gene
-    #rRNA_feature:
+    rRNA_feature: rRNA
     indexing: false
     force_indexing: false
 
@@ -293,7 +291,7 @@ igvtools:
 # - tmpdir: write tempory file on this directory (default TMP_DIR=/tmp/, but could be "TMP_DIR=/local/scratch/")
 #
 mark_duplicates:
-    do: true
+    do: false
     remove: false ## may be True
     tmpdir: /tmp/
     threads: 4
@@ -313,8 +311,8 @@ mark_duplicates:
 #            reference fasta.
 # - options: any options recognised by RNA-seQC tool
 rnaseqc2:
-    do: true
-    gtf_file: Saccer3.gtf
+    do: false
+    gtf_file:
     options: ' --coverage '
 
 
