@@ -116,8 +116,7 @@ mapping:
                 type: str
             "strandness":
                 required: False
-                type: str
-                type: int
+                type: any
                 enum: ['0', '1', '2' , '', 0, 1, 2]
             "threads":
                 type: int
