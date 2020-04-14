@@ -7,4 +7,4 @@
 - fastq_screen
 - featureCounts
 - deeptools
-- cufflinks
+#- cufflinks

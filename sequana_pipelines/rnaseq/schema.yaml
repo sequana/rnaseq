@@ -114,6 +114,11 @@ mapping:
                 type: bool
             "options":
                 type: str
+            "strandness":
+                required: False
+                type: str
+                type: int
+                enum: ['0', '1', '2' , '', 0, 1, 2]
             "threads":
                 type: int
                 range: { min: 1, max: 8 }

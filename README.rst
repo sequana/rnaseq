@@ -81,6 +81,7 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.9.11    * Automatic guessing of the strandness of the experiment
 0.9.10    * Fix multiqc for RNAseQC rule
 0.9.9     * Fix RNAseQC rule, which is now available. 
           * Fix ability to use existing rRNA file as input

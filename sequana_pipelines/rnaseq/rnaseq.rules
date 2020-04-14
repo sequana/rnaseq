@@ -8,14 +8,20 @@ import os
 import sequana
 from os.path import join
 from sequana import snaketools as sm
-sm.init("rnaseq.rules", globals())
+
+configfile: "config.yaml"
+
+sm.init("rnaseq.rules", globals(), mode="warning")
+
+
+
 
 def error(msg):
     from sequana.pipelines_common import error as err
     err(msg, "rnaseq")
 
 # This must be defined before the include
-configfile: "config.yaml"
+
 
 # FIXME what is it for ?
 __snakefile__ = srcdir(__snakefile__)
@@ -28,6 +34,7 @@ exec(open(sequana.modules["bowtie2_index_dynamic"], "r").read())
 exec(open(sequana.modules["fastqc_dynamic"], "r").read())
 exec(open(sequana.modules["dynamic_unpigz"], "r").read())
 exec(open(sequana.modules["mark_duplicates_dynamic"], "r").read())
+exec(open(sequana.modules["feature_counts_dynamic"], "r").read())
 
 
 manager = sm.PipelineManager("rnaseq", config)
@@ -58,7 +65,6 @@ __create_sequence_dictionary__output =    __fasta_file__ + ".dict"
 __create_sequence_dictionary__log =       "logs/indexing/create_sequence_dictionary.log"
 include: sm.modules["create_sequence_dictionary"]
 final_output.extend([__create_sequence_dictionary__output])
-
 
 
 do_indexing = manager.config.general.indexing
@@ -354,14 +360,30 @@ else :
     __feature_counts__input = __mapping_output
 
 if manager.config.feature_counts.do:
-    __feature_counts__output_count = manager.getname("feature_counts", "_feature.out")
+    # Guessing strandness is not always straightfoward; Even when we set it; 
+    # collaborators may want to look at the other options. So, we compute
+    # everything with the 3 different options of strandness.
+    # We will copy one of them based on our criteria, but all 3 will be
+    # available though.
+    __feature_counts_0__output_count = manager.getname("feature_counts_0", "_feature.out")
     __feature_counts__gff = __gff_file__
-    __feature_counts__options = config['feature_counts']["options"]
-    __feature_counts__log = manager.getname("feature_counts", ".logs")
+    __feature_counts__options = config['feature_counts']["options"] + " -s 0 " 
+    __feature_counts_0__log = manager.getname("feature_counts_0", ".logs")
     __feature_counts__threads = config["feature_counts"]["threads"]
-    include: sm.modules["feature_counts"]
-    expected_output.extend(expand(__feature_counts__output_count, sample=manager.samples))
+    include: feature_counts_dynamic("0", manager)
+    expected_output.extend(expand(__feature_counts_0__output_count, sample=manager.samples))
 
+    __feature_counts_1__output_count = manager.getname("feature_counts_1", "_feature.out")
+    __feature_counts_1__log = manager.getname("feature_counts_1", ".logs")
+    __feature_counts__options = config['feature_counts']["options"] + " -s 1" 
+    include: feature_counts_dynamic("1", manager)
+    expected_output.extend(expand(__feature_counts_1__output_count, sample=manager.samples))
+
+    __feature_counts_2__output_count = manager.getname("feature_counts_2", "_feature.out")
+    __feature_counts_2__log = manager.getname("feature_counts_2", ".logs")
+    __feature_counts__options = config['feature_counts']["options"] + " -s 2" 
+    include: feature_counts_dynamic("2", manager)
+    expected_output.extend(expand(__feature_counts_2__output_count, sample=manager.samples))
 
 
 # Add Read group on BAM files
@@ -486,42 +508,51 @@ rule rnaseq:
 onsuccess:
     import os
     # Create plots about stats
-    sm.plot_stats(N=len(manager.samples))
+    manager.plot_stats(N=len(manager.samples))
 
-    # Main directory
-    report_dir_format = "%(proj)s/report_rnaseq"
-    for proj in manager.samples.keys():
-        report_dir = report_dir_format % {"proj": proj}
-        try:os.mkdir(report_dir)
-        except:pass
+    print("You may want to delete the .snakemake directory, fastqc.rules and config.yaml files.")
+    print("To do so, you can use the Makefile by typing 'Makefile clean'")
 
-        shell("cp %s %s" % (__snakefile__, report_dir))
-        #shell("cp rulegraph.svg %s/rulegraph.svg" % (report_dir))
-        shell("cp config.yaml %s" % report_dir)
-        shell("cp requirements.txt %s" % report_dir)
-        shell("cp snakemake_stats.png %s" % report_dir)
+    # copy feature counts
 
-        # Create a cleanup python file to clean a sub-directory
-        sm.create_cleanup(proj)
-
-    tocopy = expand(__feature_counts__output_count, sample=manager.samples)
     try:os.mkdir("feature_counts")
     except:pass
+
+    # If user knows what he/she wants:
+    if "strandness" in config['feature_counts'] and config["feature_counts"]["strandness"]:
+        if int(config['feature_counts']['strandness']) == 0:
+            tocopy = expand(__feature_counts_0__output_count, sample=manager.samples)
+        elif int(config['feature_counts']['strandness']) == 1:
+            tocopy = expand(__feature_counts_1__output_count, sample=manager.samples)
+        elif int(config['feature_counts']['strandness']) == 2:
+            tocopy = expand(__feature_counts_2__output_count, sample=manager.samples)
+    # guessing strandness  otherwise
+    else: 
+        from sequana import BAM
+        bamfiles = expand(__mapping_output, sample=manager.samples)
+        b = BAM(bamfiles[0])
+        results = b.infer_strandness(__gff_file__, 100000)
+        if abs(results[1] - results[2]) <= 0.2 :
+            # unstranded
+            print("unstranded data")
+            tocopy = expand(__feature_counts_0__output_count, sample=manager.samples)
+        else:
+            if results[1] > results[2]:
+                print("Stranded data")
+                tocopy = expand(__feature_counts_1__output_count, sample=manager.samples)
+            else:
+                print("reversely stranded data")
+                tocopy = expand(__feature_counts_2__output_count, sample=manager.samples)
     shell("cp {} ./feature_counts/ ".format(" ".join(tocopy)))
 
-    sm.OnSuccess()() # create instance to create main cleanup
+    from sequana.snaketools import OnSuccessCleaner
+    sc = OnSuccessCleaner("rnaseq")
+    sc.files_to_remove.append("fastq_screen.conf")
+    sc.files_to_remove.append("requirements.txt")
+    sc.add_makefile()
+    sm.clean_multiqc(__multiqc__output)
 
-    with open(__multiqc__output, "r") as fin:
-        with open(__multiqc__output+"2", "w") as fout:
-            line = fin.readline()
-            while line:
-                if """<a href="http://multiqc.info" target="_blank">""" in line:
-                    line = fin.readline() # read the image
-                    line = fin.readline() # read the ending </a> tag
-                else:
-                    fout.write(line)
-                line = fin.readline() # read the next line
-    shell("mv {} {}".format(__multiqc__output +"2", __multiqc__output))
+    shell("chmod -R g+w .")
 
 onerror:
     print("An error occurred. See message above.")

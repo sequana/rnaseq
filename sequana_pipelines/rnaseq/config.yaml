@@ -134,7 +134,6 @@ cutadapt:
 #
 # - do: if unchecked, this rule is ignored
 # - conf: the name of the configuration file
-# - pf2_report: allows to plot a specific PF2 report
 #
 fastq_screen:
     do: false
@@ -206,9 +205,10 @@ bowtie2_mapping_ref:
 # :Parameters:
 #
 # - do: if unchecked, this rule is ignored
-# - options: any options recognised by feature_counts tool
+# - options: any options recognised by feature_counts tool except -s
 # - threads: number of threads to be used
-#
+# - strand: (optional) if provided, use this option in feature counts otherwise, we will guess
+# 
 # in the options, one can use the -t option to specify the feature type in GTF
 # annotation. For example gene, exon (default). The -g option specify the 
 # attribute type in GTF annoation. (gene_id) by default. Finally, 
@@ -218,8 +218,9 @@ bowtie2_mapping_ref:
 #
 feature_counts:
     do: true
-    options: -t gene -g ID -s 1    ## if exon/CDS is used, put -O option
-    threads: 2
+    options: -t gene -g ID    ## if exon/CDS is used, put -O option
+    strandness:  # set to 0,1,2 to force te type of strandness
+    threads: 1
 
 
 #############################################################################

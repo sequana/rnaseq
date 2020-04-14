@@ -96,11 +96,15 @@ search for in your input data. Each line is 'DATABASE name path BOWTIE2'. The
 path includes the path to the genome + its prefix name.  """)
 
         pipeline_group = self.add_argument_group("section_feature_counts")
+        pipeline_group.add_argument("--feature-counts-strandness",
+            default=None, 
+            help="""0 for unstranded, 1 for stranded and 2 for reversely
+stranded. If you do not know, let the pipeline guess for you.""")
         pipeline_group.add_argument("--feature-counts-options",
-            default="-t gene -g ID -s 1",
+            default="-t gene -g ID",
             help="""options for feature counts. -t should be followed by a valid
-feature type, -g by a valid attribute name and -s  by the value 0 (unstranded),
-1( stranded) or 2 (reversely stranded)""")
+feature type, -g by a valid attribute name. Do not use -s option, use the
+--feature-counts-strandness parameter instead.""")
 
         pipeline_group = self.add_argument_group("pipeline_others")
         pipeline_group.add_argument('--do-igvtools', action="store_true")
@@ -152,6 +156,7 @@ def main(args=None):
 
     # ----------------------------------------------------- feature counts
     cfg.feature_counts.options = options.feature_counts_options
+    cfg.feature_counts.strandness = options.feature_counts_strandness
 
     # ------------------------------------------------------ optional
     cfg.igvtools.do = options.do_igvtools
@@ -171,7 +176,7 @@ def main(args=None):
         shutil.copy(options.fastq_screen_conf, manager.workdir)
     else:
         cfg.fastq_screen.do = False
-        # copy the default fastq_screen conf file 
+        # copy the default fastq_screen conf file
         import sequana_pipelines.rnaseq
         shutil.copy(os.path.join(sequana_pipelines.rnaseq.__path__[0] ,
             "fastq_screen.conf"), manager.workdir)
@@ -193,7 +198,7 @@ def main(args=None):
 
         logger.error("rRNA feature not found in the input GFF ({})".format(gff_file) +
             " This is probably an error. Please check the GFF content and /or"
-            " change the feature name with --rRNA-feature based on the content" 
+            " change the feature name with --rRNA-feature based on the content"
             " of your GFF. Valid features are: {}".format(valid_types))
         sys.exit()
 
@@ -208,8 +213,6 @@ def main(args=None):
         logger.error("Invalid type ({}) in feature_count section of config.yaml (options {}). Valid types found in your GFF file are: {}".format(fc_type, fc_options, valid_types))
 
         sys.exit()
-
-
 
 
     # finalise the command and save it; copy the snakemake. update the config
