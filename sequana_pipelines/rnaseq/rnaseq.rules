@@ -141,7 +141,7 @@ if manager.config.general.aligner == "bowtie2":
         include: bowtie2_index_dynamic("ref")
         expected_output.extend([__bowtie2_index_ref__output_done])
     elif os.path.exists(__bowtie2_index_ref__output_done) and do_indexing and force_indexing is False:
-        error(msg_error_indexing.format("bowtie2", __bowtie2_index_ref__output_done))
+        error(msg_error_indexing_exists.format("bowtie2", __bowtie2_index_ref__output_done))
     elif os.path.exists(__bowtie2_index_ref__output_done) is False and do_indexing is False:
         error(msg_error_indexing_notfound.format("bowtie2", __bowtie2_index_ref__output_done))
 
