@@ -5,6 +5,7 @@ Affiliation: Institut Pasteur @ 2016
 This pipeline is part of Sequana software (sequana.readthedocs.io)
 """
 import os
+import shutil
 import sequana
 from os.path import join
 from sequana import snaketools as sm
@@ -164,6 +165,22 @@ elif manager.config.general.aligner  == "star":
     elif os.path.exists(__star_index__output_done) is False and do_indexing is False:
         error(msg_error_indexing_notfound.format("star", __star_index__output_done))
 
+elif manager.config.general.aligner == "salmon":
+    __salmon_index__output_done = genome_directory + "/salmon/salmon.done"
+    __salmon_index__genome_dir =  genome_directory + "/salmon"
+    #__salmon_index__ = __prefix_name__
+    if os.path.exists(__salmon_index__output_done) and do_indexing is False:
+        pass # index exists, no need to do it, everything should be fine
+    elif (os.path.exists(__salmon_index__output_done) and do_indexing and force_indexing) or \
+        (os.path.exists(__salmon_index__output_done) is False and do_indexing):
+        __salmon_index__fasta_input =  __fasta_file__
+        __salmon_index__gff_input =  __gff_file__
+        __salmon_index__log = "logs/salmon_indexing/salmon.log"
+        include: sm.modules["salmon_index"]
+    elif os.path.exists(__salmon_index__output_done) and do_indexing and force_indexing is False:
+        error(msg_error_indexing_exists.format("salmon", __salmon_index__output_done))
+    elif os.path.exists(__salmon_index__output_done) is False and do_indexing is False:
+        error(msg_error_indexing_notfound.format("salmon", __salmon_index__output_done))
 
 
 
@@ -329,10 +346,17 @@ elif manager.config.general.aligner == "star":
     include: sm.modules["star_mapping"]
     expected_output.extend(expand(__star_mapping__sort, sample=manager.samples))
     __mapping_output = __star_mapping__sort
-
+elif manager.config.general.aligner == "salmon":
+    __salmon_mapping__input_fastq = __clean_fastq__output
+    __salmon_mapping__output_counts = "{sample}/salmon_mapping_{sample}/{sample}_quant.sf"
+    __salmon_mapping__logs = manager.getname("salmon_mapping", ".logs")
+    include: sm.modules["salmon_mapping"]
+    expected_output.extend(expand(__salmon_mapping__output_counts, sample=manager.samples))
+    # There is no BAM created 
+    __mapping_output = None
 
 # generating bigwig files
-if manager.config.coverage.do is True:
+if manager.config.coverage.do is True and manager.aligner not in ['salmon']:
     __bamCoverage__input = __mapping_output
     __bamCoverage__log = manager.getname("bamCoverage", ".logs")
     __bamCoverage__output = manager.getname("bamCoverage", ".norm.bw")
@@ -340,7 +364,7 @@ if manager.config.coverage.do is True:
     final_output.extend(expand(__bamCoverage__output, sample=manager.samples))
 
 
-if manager.config.igvtools.do:
+if manager.config.igvtools.do and manager.aligner not in ['salmon']:
     # if nothing provided, it must be an empty string
     if manager.config.igvtools.chrom_sizes_file.strip():
         pass
@@ -354,12 +378,14 @@ if manager.config.igvtools.do:
 
 
 # Feature counts from subread suite
+if manager.config.general.aligner == "salmon":
+    __feature_counts__input = __salmon_mapping__output_counts
 if manager.config.general.aligner == "star":
     __feature_counts__input = __star_mapping__sort
 else :
     __feature_counts__input = __mapping_output
 
-if manager.config.feature_counts.do:
+if manager.config.feature_counts.do and manager.config.general.aligner not in ['salmon']:
     # Guessing strandness is not always straightfoward; Even when we set it; 
     # collaborators may want to look at the other options. So, we compute
     # everything with the 3 different options of strandness.
@@ -387,20 +413,21 @@ if manager.config.feature_counts.do:
 
 
 # Add Read group on BAM files
-__add_read_group__input = __mapping_output
-__add_read_group__output = manager.getname("add_read_group", ".bam")
-__add_read_group__log_err = "%s/logs/AddOrReplaceReadGroups/stderr.logs" % manager.sample
-__add_read_group__log_std ="%s/logs/AddOrReplaceReadGroups/stdout.logs" % manager.sample
-__add_read_group__rg = "ID=%s LB=%s PL=%s PU=%s SM=%s" % (
-    manager.sample, manager.sample, manager.config.sequencing.platform,
-    manager.config.sequencing.flowcell, manager.sample)
-include: sm.modules["add_read_group"]
+if manager.config.general.aligner not in ['salmon']:
+    __add_read_group__input = __mapping_output
+    __add_read_group__output = manager.getname("add_read_group", ".bam")
+    __add_read_group__log_err = "%s/logs/AddOrReplaceReadGroups/stderr.logs" % manager.sample
+    __add_read_group__log_std ="%s/logs/AddOrReplaceReadGroups/stdout.logs" % manager.sample
+    __add_read_group__rg = "ID=%s LB=%s PL=%s PU=%s SM=%s" % (
+        manager.sample, manager.sample, manager.config.sequencing.platform,
+        manager.config.sequencing.flowcell, manager.sample)
+    include: sm.modules["add_read_group"]
 
 
 # duplicates can be from PCR or if SR, by pure chance.
 # if Paired, most likely a PCR origin.
 # Mark duplicates
-if config["mark_duplicates"]["do"]:
+if config["mark_duplicates"]["do"] and manager.config.general.aligner not in ['salmon']:
     __mark_duplicates_ref__input = __add_read_group__output
     __mark_duplicates_ref__output = manager.getname("mark_duplicates", ".bam")
     __mark_duplicates_ref__metrics = manager.getname("mark_duplicates", ".metrics")
@@ -506,43 +533,83 @@ rule rnaseq:
 
 
 onsuccess:
-    import os
     # Create plots about stats
     manager.plot_stats(N=len(manager.samples))
-
-    print("You may want to delete the .snakemake directory, fastqc.rules and config.yaml files.")
-    print("To do so, you can use the Makefile by typing 'Makefile clean'")
 
     # copy feature counts
 
     try:os.mkdir("feature_counts")
     except:pass
 
+    try:os.mkdir("rnadiff")
+    except:pass
+
+    logger.info("Building input files for rnadiff analysis")
+    # in theory, the options used in the feature counts should be used here 
+    # features counts -t option specifies the feature type from he GTF/GFF
+    # annotation e.g. exon, gene the -g option specify the attributes to be 
+    # found in the GFF. e.g. ID, locus_id, etc 
+    from sequana.gff3 import GFF3
+    gff = GFF3(__gff_file__)
+    index = config['feature_counts']['options'].split().index("-t")
+    genetic_type = config['feature_counts']['options'].split()[index+1]
+    index = config['feature_counts']['options'].split().index("-g")
+    attribute = config['feature_counts']['options'].split()[index+1]
+    gff.create_files_for_rnadiff("rnadiff/input", genetic_type=genetic_type, ID=attribute, fields=[attribute])
+    script = """
+from sequana.gff3 import GFF3
+gff = GFF3("{}")
+gff.create_files_for_rnadiff("input", genetic_type="{}", ID="{}", fields={})
+"""
+    script = script.format(__gff_file__, genetic_type, attribute, [attribute])
+    with open("rnadiff/build_input_files.py", "w") as fout:
+        fout.write(script)
+
+    from sequana.pipelines_common import get_pipeline_location as getpath
+    sharedir = getpath("rnaseq")
+    if config['rnadiff']['mode'] == "one_factor":
+        filename = sharedir + os.sep + "rnadiff_one_factor.R"
+        outname = "rnadiff/{}".format("rnadiff_one_factor.R")
+        if os.path.exists(outname) is False:
+            shutil.copy(filename, outname)
+    else:
+        filename = sharedir + os.sep + "rnadiff_GLM.R"
+        outname = "rnadiff/{}".format("rnadiff_GLM.R")
+        if os.path.exists(filename) is False:
+            shutil.copy(filename, outname)
+
+
     # If user knows what he/she wants:
-    if "strandness" in config['feature_counts'] and config["feature_counts"]["strandness"]:
-        if int(config['feature_counts']['strandness']) == 0:
-            tocopy = expand(__feature_counts_0__output_count, sample=manager.samples)
-        elif int(config['feature_counts']['strandness']) == 1:
-            tocopy = expand(__feature_counts_1__output_count, sample=manager.samples)
-        elif int(config['feature_counts']['strandness']) == 2:
-            tocopy = expand(__feature_counts_2__output_count, sample=manager.samples)
-    # guessing strandness  otherwise
-    else: 
-        from sequana import BAM
-        bamfiles = expand(__mapping_output, sample=manager.samples)
-        b = BAM(bamfiles[0])
-        results = b.infer_strandness(__gff_file__, 100000)
-        if abs(results[1] - results[2]) <= 0.2 :
-            # unstranded
-            print("unstranded data")
-            tocopy = expand(__feature_counts_0__output_count, sample=manager.samples)
-        else:
-            if results[1] > results[2]:
-                print("Stranded data")
+    if manager.config.general.aligner == 'salmon':
+        tocopy = expand(__salmon_mapping__output_counts, sample=manager.samples)
+    else:
+        # we use user parameters to figure out whether he/she knows the
+        # strandness and if not, we will guess
+        if "strandness" in config['feature_counts'] and config["feature_counts"]["strandness"]:
+            if int(config['feature_counts']['strandness']) == 0:
+                tocopy = expand(__feature_counts_0__output_count, sample=manager.samples)
+            elif int(config['feature_counts']['strandness']) == 1:
                 tocopy = expand(__feature_counts_1__output_count, sample=manager.samples)
-            else:
-                print("reversely stranded data")
+            elif int(config['feature_counts']['strandness']) == 2:
                 tocopy = expand(__feature_counts_2__output_count, sample=manager.samples)
+        # guessing strandness  otherwise
+        else:
+            from sequana import BAM
+            bamfiles = expand(__mapping_output, sample=manager.samples)
+            b = BAM(bamfiles[0])
+            results = b.infer_strandness(__gff_file__, 100000)
+            msg = "This is {} data (check in the multiqc report)"
+            if abs(results[1] - results[2]) <= 0.2 :
+                # unstranded
+                logger.info(msg.format('unstranded data'))
+                tocopy = expand(__feature_counts_0__output_count, sample=manager.samples)
+            else:
+                if results[1] > results[2]:
+                    logger.info(msg.format('stranded data'))
+                    tocopy = expand(__feature_counts_1__output_count, sample=manager.samples)
+                else:
+                    logger.info(msg.format('reversely stranded data'))
+                    tocopy = expand(__feature_counts_2__output_count, sample=manager.samples)
     shell("cp {} ./feature_counts/ ".format(" ".join(tocopy)))
 
     from sequana.snaketools import OnSuccessCleaner
@@ -556,7 +623,6 @@ onsuccess:
 
 onerror:
     print("An error occurred. See message above.")
-
 
 
 

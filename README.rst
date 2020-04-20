@@ -81,6 +81,9 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.9.12    * include salmon tool as an alternative to star/bowtie2
+          * include rnadiff directory with required input for Differential
+            analysis
 0.9.11    * Automatic guessing of the strandness of the experiment
 0.9.10    * Fix multiqc for RNAseQC rule
 0.9.9     * Fix RNAseQC rule, which is now available. 

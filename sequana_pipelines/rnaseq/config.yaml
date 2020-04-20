@@ -199,6 +199,10 @@ bowtie2_mapping_ref:
     threads: 4
 
 
+salmon_mapping:
+    options: '-l A'
+    threads: 4
+
 #############################################################################
 # feature_counts used to count reads against features
 #
@@ -331,3 +335,17 @@ multiqc:
     options: -f -x *_init_* -x *left_kept_reads* -x *report_rnaseq* -e htseq -e slamdunk
     output_directory: multiqc
     config_file: multiqc_config.yaml
+
+
+##############################################################################
+# RNADiff analysis
+#
+# :Parameters:
+#
+# - mode: one_factor or GLM accepted
+#
+rnadiff:
+    mode: one_factor
+
+
+

@@ -5,7 +5,7 @@ from setuptools import setup, find_namespace_packages
 
 _MAJOR               = 0
 _MINOR               = 9
-_MICRO               = 11
+_MICRO               = 12
 version              = '%d.%d.%d' % (_MAJOR, _MINOR, _MICRO)
 release              = '%d.%d' % (_MAJOR, _MINOR)
 
@@ -16,7 +16,7 @@ metainfo = {
     'url' : "https://github.com/sequana/",
     'description': "A RNAseq pipeline from raw reads to feature counts" ,
     'platforms' : ['Linux', 'Unix', 'MacOsX', 'Windows'],
-    'keywords' : ['snakemake, sequana, RNAseq, SARTools, differential analysis'],
+    'keywords' : ['snakemake, sequana, RNAseq, RNADiff, differential analysis'],
     'classifiers' : [
           'Development Status :: 5 - Production/Stable',
           'Intended Audience :: Education',

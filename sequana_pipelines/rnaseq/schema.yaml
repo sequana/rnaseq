@@ -28,7 +28,7 @@ mapping:
             "aligner":
                 type: str
                 required: True 
-                enum: ["bowtie2", "bowtie1", "star"] 
+                enum: ["bowtie2", "bowtie1", "star", "salmon"] 
             "genome_directory":
                 required: True
                 type: str
@@ -130,6 +130,16 @@ mapping:
                 type: int
                 required: True
                 range: { min: 1 }
+
+    'salmon_mapping':
+        type: map
+        mapping:
+            "options": 
+                type: str
+            "threads":
+                type: int
+                required: True
+                range: { min: 1 }
     'fastq_screen':
         type: map
         mapping:
@@ -223,3 +233,9 @@ mapping:
                 required: True
                 range: { min: 1}
 
+    'rnadiff':
+        type: map
+        mapping:
+            "mode":
+                type: str
+                enum: [ one_factor, GLM ]

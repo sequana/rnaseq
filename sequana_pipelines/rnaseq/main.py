@@ -65,10 +65,10 @@ class Options(argparse.ArgumentParser):
         pipeline_group.add_argument("--genome-directory", dest="genome_directory",
             default=".", required=True)
         pipeline_group.add_argument("--aligner", dest="aligner", required=True,
-            choices=['bowtie2', 'bowtie1', 'star'],
+            choices=['bowtie2', 'bowtie1', 'star', "salmon"],
             help= "a mapper in bowtie, bowtie2, star")
         pipeline_group.add_argument("--do-indexing", dest="do_indexing",
-            action="store_true", help="""If bowtie/star indexing file are
+            action="store_true", help="""If bowtie/star/salmon indexing file are
                 not computed, you will need to compute them by setting
                 this option """)
         pipeline_group.add_argument("--force-indexing", action="store_true",
@@ -117,6 +117,12 @@ feature type, -g by a valid attribute name. Do not use -s option, use the
         pipeline_group.add_argument('--rnaseqc-gtf-file',
             help="The GTF file to be used")
 
+        # RNADIFF
+        pipeline_group = self.add_argument_group("section_rnadiff")
+        pipeline_group.add_argument('--rnadiff-mode', type=str,
+            required=True,
+            choices=["one_factor", "GLM"],
+            help="""Fix the type of analyis (one_factor or GLM)""")
 
 def main(args=None):
 
@@ -166,6 +172,9 @@ def main(args=None):
     # -------------------------------------------------------- RNAseqQC
     cfg.rnaseqc2.do = options.do_rnaseqc
     cfg.rnaseqc2.gtf_file = options.rnaseqc_gtf_file
+
+    # -------------------------------------------------------- RNAdiff
+    cfg.rnadiff.mode = options.rnadiff_mode
 
     # ----------------------------------------------------- fastq_screen conf
     if options.do_fastq_screen:
