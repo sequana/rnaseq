@@ -14,7 +14,7 @@ saccer3 = getpath("rnaseq") + "/Saccer3/"
 
 def test_standalone_subprocess():
     directory = tempfile.TemporaryDirectory()
-    cmd = """sequana_pipelines_rnaseq --input-directory {} --working-directory {}""".format(
+    cmd = """sequana_pipelines_rnaseq --input-directory {} --working-directory {} --rnadiff-mode one_factor""".format(
         sharedir, directory.name)
     subprocess.call(cmd.split())
 
@@ -23,7 +23,8 @@ def test_standalone_script():
     directory = tempfile.TemporaryDirectory()
     import sequana_pipelines.rnaseq.main as m
     sys.argv = ["test", "--input-directory", sharedir, "--genome-directory",
-        saccer3, "--force", "--aligner", "bowtie2",
+        saccer3, "--force", "--aligner", "bowtie2", "--rnadiff-mode",
+"one_factor",
         "--rRNA-feature", "rRNA_gene"]   # ideally should be rRNA but current
     m.main()
 
