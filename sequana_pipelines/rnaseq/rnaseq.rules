@@ -12,8 +12,10 @@ from sequana import snaketools as sm
 
 configfile: "config.yaml"
 
-sm.init("rnaseq.rules", globals(), mode="warning")
-
+manager = sm.PipelineManager("rnaseq", config)
+manager.setup(globals(), mode="warning")
+import matplotlib
+matplotlib.use('Agg')
 
 
 
