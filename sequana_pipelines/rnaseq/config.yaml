@@ -197,6 +197,7 @@ bowtie2_mapping_ref:
     #options: "--dovetail --no-mixed --no-discordant " for paired-end data
     options: ''
     threads: 4
+    genome_size_larger_than_4gb: false
 
 
 salmon_mapping:

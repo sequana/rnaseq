@@ -81,6 +81,12 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.9.13    * set mark_duplicate to true by default
+          * use new sequana pipeline manager
+          * export all features counts in a single file
+          * custom HTML report
+          * faster --help calls
+          * --from-project option added
 0.9.12    * include salmon tool as an alternative to star/bowtie2
           * include rnadiff directory with required input for Differential
             analysis

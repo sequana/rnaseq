@@ -223,6 +223,8 @@ mapping:
                 type: int
                 required: True
                 range: { min: 1}
+            "genome_size_larger_than_4gb":
+                type: bool
     'star_mapping':
         type: map
         mapping:

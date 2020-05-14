@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 # License: 3-clause BSD
-__revision__ = "$Id: $" # for the SVN Id
 from setuptools import setup, find_namespace_packages
+from setuptools.command.develop import develop
+from setuptools.command.install import install
+import subprocess
 
 _MAJOR               = 0
 _MINOR               = 9
-_MICRO               = 12
+_MICRO               = 13
 version              = '%d.%d.%d' % (_MAJOR, _MINOR, _MICRO)
 release              = '%d.%d' % (_MAJOR, _MINOR)
 
@@ -33,9 +35,24 @@ metainfo = {
           'Topic :: Scientific/Engineering :: Physics']
     }
 
+NAME = "rnaseq"
+
+class Install(install):
+    def run(self):
+        cmd = "sequana_completion --name {} --force ".format(NAME)
+        try: subprocess.run(cmd.split())
+        except:pass
+        install.run(self)
+
+class Develop(develop):
+    def run(self):
+        cmd = "sequana_completion --name {} --force ".format(NAME)
+        try:subprocess.run(cmd.split())
+        except:pass
+        develop.run(self)
 
 setup(
-    name             = "sequana_rnaseq",
+    name             = "sequana_{}".format(NAME),
     version          = version,
     maintainer       = metainfo['authors']['main'][0],
     maintainer_email = metainfo['authors']['main'][1],
@@ -54,7 +71,7 @@ setup(
         'sequana_pipelines.rnaseq.data' ,
         'sequana_pipelines.rnaseq.data.Saccer3' ],
 
-    install_requires = "sequana",
+    install_requires = open("requirements.txt").read(),
 
     # This is recursive include of data files
     exclude_package_data = {"": ["__pycache__"]},
@@ -69,6 +86,7 @@ setup(
     entry_points = {'console_scripts':[
         'sequana_pipelines_rnaseq=sequana_pipelines.rnaseq.main:main',
         'sequana_rnaseq=sequana_pipelines.rnaseq.main:main']
-    }
+    },
 
+    #cmdclass={"install": Install, "develop": Develop}
 )
