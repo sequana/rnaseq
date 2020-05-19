@@ -530,6 +530,11 @@ rule rnaseq:
 onsuccess:
     # Create plots about stats
     from sequana import logger
+    from sequana.gff3 import GFF3
+    from sequana.pipelines_common import get_pipeline_location as getpath
+    from sequana import BAM
+    from sequana.modules_report.summary import SummaryModule2
+
     logger.level = "INFO"
     manager.teardown(extra_files_to_remove=["fastq_screen.conf", "requirements.txt"])
     manager.clean_multiqc(__multiqc__output)
@@ -549,7 +554,6 @@ onsuccess:
     # features counts -t option specifies the feature type from he GTF/GFF
     # annotation e.g. exon, gene the -g option specify the attributes to be 
     # found in the GFF. e.g. ID, locus_id, etc 
-    from sequana.gff3 import GFF3
     gff = GFF3(__gff_file__)
     index = config['feature_counts']['options'].split().index("-t")
     genetic_type = config['feature_counts']['options'].split()[index+1]
@@ -566,7 +570,6 @@ gff.create_files_for_rnadiff("input", genetic_type="{}", ID="{}", fields={})
     with open("rnadiff/build_input_files.py", "w") as fout:
         fout.write(script)
 
-    from sequana.pipelines_common import get_pipeline_location as getpath
     sharedir = getpath("rnaseq")
     if config['rnadiff']['mode'] == "one_factor":
         filename = sharedir + os.sep + "rnadiff_one_factor.R"
@@ -595,7 +598,6 @@ gff.create_files_for_rnadiff("input", genetic_type="{}", ID="{}", fields={})
                 tocopy = expand(__feature_counts_2__output_count, sample=manager.samples)
         # guessing strandness  otherwise
         else:
-            from sequana import BAM
             bamfiles = expand(__mapping_output, sample=manager.samples)
             b = BAM(bamfiles[0])
             results = b.infer_strandness(__gff_file__, 100000)
@@ -628,7 +630,6 @@ gff.create_files_for_rnadiff("input", genetic_type="{}", ID="{}", fields={})
     data = {"name": "rnaseq",
             "rulegraph": __rulegraph__output,
             "stats": "stats.txt"}
-    from sequana.modules_report.summary import SummaryModule2
     intro ="""
 
     <h2>Overview</h2>
