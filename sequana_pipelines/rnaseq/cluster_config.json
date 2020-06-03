@@ -26,5 +26,9 @@
 	"bamCoverage" :
 	{
 		"ram" : "20G"
+	},
+	"mark_duplicates" :
+	{
+		"ram" : "34G"
 	}
 }
