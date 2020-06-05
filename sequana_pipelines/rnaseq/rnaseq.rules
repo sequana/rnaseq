@@ -274,16 +274,23 @@ else:
 
 include: dynamic_unpigz("R1", manager)
 __unpigz__output = [__unpigz_R1__output]
-if manager.paired:
+"""if manager.paired:
     if manager.config.cutadapt.do:
         __unpigz_R2__input = manager.getname("cutadapt", "_R2_.cutadapt.fastq.gz")
         __unpigz_R2__output = manager.getname("cutadapt", "_R2_.cutadapt.fastq")
     else:
         __unpigz_R2__input = __data__input
         __unpigz_R2__output = manager.getname("cutadapt", "_R2_.cutadapt.fastq")
-    include: dynamic_unpigz("R2", manager)
-    __unpigz__output += [__unpigz_R2__output]
-
+    # With paired data, alignement on rRNA leads to 0% alignment while on R1
+    # only, the percentage is >0. First reason is that reads are not trimmed
+    # properly. In truth, bowtie2 supports
+    # local alignments which means it can soft-clip non-matching (=adapter)
+    # content while still align the local part of the read that matches the
+    # reference. With Bowtie the read will probably go unaligned due to the many
+    # mismatches. So we commented these two lines in v0.9.14
+    #include: dynamic_unpigz("R2", manager)
+    #__unpigz__output += [__unpigz_R2__output]
+"""
 
 
 if manager.config.bowtie1_mapping_rna.do:
@@ -601,15 +608,16 @@ gff.create_files_for_rnadiff("input", genetic_type="{}", ID="{}", fields={})
             bamfiles = expand(__mapping_output, sample=manager.samples)
             b = BAM(bamfiles[0])
             results = b.infer_strandness(__gff_file__, 100000)
+            logger.info("strandeness inference: {}".format(results))
             msg = "This is {} data (check in the multiqc report)"
             if abs(results[1] - results[2]) <= 0.2 :
-                # unstranded
+                # stranded
                 logger.info(msg.format('unstranded data'))
                 tocopy = expand(__feature_counts_0__output_count, sample=manager.samples)
             else:
                 if results[1] > results[2]:
                     logger.info(msg.format('stranded data'))
-                    tocopy = expand(__feature_counts_1__output_count, sample=manager.samples)
+                    tocopy = expand(__feature_counts_0__output_count, sample=manager.samples)
                 else:
                     logger.info(msg.format('reversely stranded data'))
                     tocopy = expand(__feature_counts_2__output_count, sample=manager.samples)

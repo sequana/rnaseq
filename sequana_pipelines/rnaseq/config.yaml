@@ -299,7 +299,7 @@ igvtools:
 mark_duplicates:
     do: false
     remove: false ## may be True
-    tmpdir: /tmp/
+    tmpdir: ./tmp/
     threads: 4
 
 

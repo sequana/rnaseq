@@ -81,6 +81,10 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.9.14    * Use only R1 with bowtie1
+          * set the memory requirements for mark_duplicates in cluster_config
+            file
+          * Set temporary directory for mark_duplicates to be local ./tmp
 0.9.13    * set mark_duplicate to true by default
           * use new sequana pipeline manager
           * export all features counts in a single file
