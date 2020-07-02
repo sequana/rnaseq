@@ -181,13 +181,14 @@ elif manager.config.general.aligner == "salmon":
 
 
 # FASTQC on input data set
-__fastqc_samples__input_fastq = __data__input
-__fastqc_samples__output_done = manager.getname("fastqc_samples", ".done")
-__fastqc_samples__wkdir       = manager.getwkdir("fastqc_samples")
-__fastqc_samples__log         = "%s/fastqc_samples/fastqc.log" % manager.sample
-include: fastqc_dynamic("samples", manager)
-expected_output.extend(expand(__fastqc_samples__output_done, sample=manager.samples))
 
+if not skip_fastqc_sample:
+    __fastqc_samples__input_fastq = __data__input
+    __fastqc_samples__output_done = manager.getname("fastqc_samples", ".done")
+    __fastqc_samples__wkdir       = manager.getwkdir("fastqc_samples")
+    __fastqc_samples__log         = "%s/fastqc_samples/fastqc.log" % manager.sample
+    include: fastqc_dynamic("samples", manager)
+    expected_output.extend(expand(__fastqc_samples__output_done, sample=manager.samples))
 
 if manager.config.cutadapt.do:
     adapter_tool = manager.config.cutadapt.tool_choice

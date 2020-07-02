@@ -71,6 +71,7 @@ sequencing:
 # - options: string with any valid FastQC options
 #
 fastqc:
+    skip_fastqc_sample: True
     options: --nogroup
 
 
