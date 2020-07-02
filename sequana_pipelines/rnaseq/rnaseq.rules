@@ -270,27 +270,16 @@ else:
     __unpigz_R1__input = __data__input
     __unpigz_R1__output = manager.getname("cutadapt", "_R1_.cutadapt.fastq")
 
-#print(__unpigz_R1__input, __unpigz_R1__output)
-#print(__data__input)
 
 include: dynamic_unpigz("R1", manager)
 __unpigz__output = [__unpigz_R1__output]
-"""if manager.paired:
-    if manager.config.cutadapt.do:
-        __unpigz_R2__input = manager.getname("cutadapt", "_R2_.cutadapt.fastq.gz")
-        __unpigz_R2__output = manager.getname("cutadapt", "_R2_.cutadapt.fastq")
-    else:
-        __unpigz_R2__input = __data__input
-        __unpigz_R2__output = manager.getname("cutadapt", "_R2_.cutadapt.fastq")
-    # With paired data, alignement on rRNA leads to 0% alignment while on R1
-    # only, the percentage is >0. First reason is that reads are not trimmed
-    # properly. In truth, bowtie2 supports
-    # local alignments which means it can soft-clip non-matching (=adapter)
-    # content while still align the local part of the read that matches the
-    # reference. With Bowtie the read will probably go unaligned due to the many
-    # mismatches. So we commented these two lines in v0.9.14
-    #include: dynamic_unpigz("R2", manager)
-    #__unpigz__output += [__unpigz_R2__output]
+"""With paired data, alignement on rRNA leads to 0% alignment if we use R1 and
+R2. If we use R1 only, the percentage is >0. First reason is that reads are not
+trimmed properly. In truth, bowtie2 supports local alignments which means it can
+soft-clip non-matching (=adapter) content while still align the local part of
+the read that matches the reference. With Bowtie1 the read will probably go
+unaligned due to the many mismatches. So we do not include R2 from version
+v0.9.14.
 """
 
 
