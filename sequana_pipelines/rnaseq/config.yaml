@@ -334,7 +334,7 @@ rnaseqc2:
 # - config_file: by default, we use sequana RNA-seq multiqc_config file. 
 #       If you want your own multiqc, fill this entry
 multiqc:
-    options: -f -x *_init_* -x *left_kept_reads* -x *report_rnaseq* -e htseq -e slamdunk
+    options: -f -x *_init_* -x *left_kept_reads* -x *fastqc_samples* -e htseq -e slamdunk
     output_directory: multiqc
     config_file: multiqc_config.yaml
 
