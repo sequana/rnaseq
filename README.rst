@@ -81,6 +81,11 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+
+0.9.15    * FastQC on raw data skipped by default (FastQC
+            for processed data is still available)
+	  * Added paired options (-p) for featureCounts
+	  * Switch back markduplicates to False for now.
 0.9.14    * Use only R1 with bowtie1
           * set the memory requirements for mark_duplicates in cluster_config
             file
