@@ -182,7 +182,7 @@ elif manager.config.general.aligner == "salmon":
 
 # FASTQC on input data set
 
-if not skip_fastqc_sample:
+if not config['fastqc']['skip_fastqc_samples']:
     __fastqc_samples__input_fastq = __data__input
     __fastqc_samples__output_done = manager.getname("fastqc_samples", ".done")
     __fastqc_samples__wkdir       = manager.getwkdir("fastqc_samples")

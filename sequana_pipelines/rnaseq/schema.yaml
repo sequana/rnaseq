@@ -5,36 +5,37 @@ type: map
 mapping:
     "input_directory":
         type: str
-        required: False
+        required: True
     "input_readtag":
         type: str
-        required: False
+        required: True
     "input_pattern":
         type: str
-        required: False
+        required: True
 
     "fastqc":
         type: map
         mapping:
-            "do_group":
+            "skip_fastqc_samples":
                 type: bool
+                required: True
             "options":
                 type: str
-                required: False
+                required: True
 
     "general":
         type: map
         mapping:
             "aligner":
                 type: str
-                required: True 
-                enum: ["bowtie2", "bowtie1", "star", "salmon"] 
+                required: True
+                enum: ["bowtie2", "bowtie1", "star", "salmon"]
             "genome_directory":
                 required: True
                 type: str
-            "rRNA_file": 
+            "rRNA_file":
                 type: str
-            "rRNA_feature": 
+            "rRNA_feature":
                 type: str
             "indexing":
                 type: bool
@@ -47,9 +48,9 @@ mapping:
     "sequencing":
         type: map
         mapping:
-            "platform": 
+            "platform":
                 type: str
-            "instrument": 
+            "instrument":
                 type: str
             "flowcell":
                 type: str
@@ -100,7 +101,7 @@ mapping:
     "multiqc":
         type: map
         mapping:
-            "options": 
+            "options":
                 type: str
             "output_directory":
                 type: str
@@ -134,7 +135,7 @@ mapping:
     'salmon_mapping':
         type: map
         mapping:
-            "options": 
+            "options":
                 type: str
             "threads":
                 type: int
