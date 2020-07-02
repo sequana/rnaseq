@@ -81,7 +81,6 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
-
 0.9.15    * FastQC on raw data skipped by default (FastQC
             for processed data is still available)
           * Added paired options (-p) for featureCounts
