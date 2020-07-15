@@ -386,7 +386,7 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
     __feature_counts_0__output_count = manager.getname("feature_counts_0", "_feature.out")
     __feature_counts__gff = __gff_file__
     __feature_counts__options = config['feature_counts']["options"] + " -s 0 "
-    if manager.config.paired:
+    if manager.paired:
         __feature_counts__options += " -p "
     __feature_counts_0__log = manager.getname("feature_counts_0", ".logs")
     __feature_counts__threads = config["feature_counts"]["threads"]
@@ -396,7 +396,7 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
     __feature_counts_1__output_count = manager.getname("feature_counts_1", "_feature.out")
     __feature_counts_1__log = manager.getname("feature_counts_1", ".logs")
     __feature_counts__options = config['feature_counts']["options"] + " -s 1"
-    if manager.config.paired:
+    if manager.paired:
         __feature_counts__options +=  " -p "
     include: feature_counts_dynamic("1", manager)
     expected_output.extend(expand(__feature_counts_1__output_count, sample=manager.samples))
@@ -404,7 +404,7 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
     __feature_counts_2__output_count = manager.getname("feature_counts_2", "_feature.out")
     __feature_counts_2__log = manager.getname("feature_counts_2", ".logs")
     __feature_counts__options = config['feature_counts']["options"] + " -s 2"
-    if manager.config.paired:
+    if manager.paired:
         __feature_counts__options +=  " -p "
     include: feature_counts_dynamic("2", manager)
     expected_output.extend(expand(__feature_counts_2__output_count, sample=manager.samples))
