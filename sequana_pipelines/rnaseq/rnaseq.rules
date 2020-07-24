@@ -613,7 +613,7 @@ gff.create_files_for_rnadiff("input", genetic_type="{}", ID="{}", fields={})
             else:
                 if results[1] > results[2]:
                     logger.info(msg.format('stranded data'))
-                    tocopy = expand(__feature_counts_0__output_count, sample=manager.samples)
+                    tocopy = expand(__feature_counts_1__output_count, sample=manager.samples)
                 else:
                     logger.info(msg.format('reversely stranded data'))
                     tocopy = expand(__feature_counts_2__output_count, sample=manager.samples)
