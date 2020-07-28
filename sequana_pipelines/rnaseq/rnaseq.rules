@@ -9,7 +9,7 @@ import shutil
 import sequana
 from os.path import join
 from sequana import snaketools as sm
-import sequana.features_counts as fc
+import sequana.featurecounts as fc
 
 configfile: "config.yaml"
 
