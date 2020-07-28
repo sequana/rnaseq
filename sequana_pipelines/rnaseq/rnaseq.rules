@@ -9,6 +9,7 @@ import shutil
 import sequana
 from os.path import join
 from sequana import snaketools as sm
+import sequana.features_counts as fc
 
 configfile: "config.yaml"
 
@@ -601,22 +602,17 @@ gff.create_files_for_rnadiff("input", genetic_type="{}", ID="{}", fields={})
                 tocopy = expand(__feature_counts_2__output_count, sample=manager.samples)
         # guessing strandness  otherwise
         else:
-            bamfiles = expand(__mapping_output, sample=manager.samples)
-            b = BAM(bamfiles[0])
-            results = b.infer_strandness(__gff_file__, 100000)
-            logger.info("strandeness inference: {}".format(results))
-            msg = "This is {} data (check in the multiqc report)"
-            if abs(results[1] - results[2]) <= 0.2 :
-                # stranded
-                logger.info(msg.format('unstranded data'))
+            probable_strand = fc.get_most_probable_strand_consensus(".")
+            logger.info("strandeness inference: {}".format(probable_strand))
+            msg = "This is {probable_strand} data (check in the multiqc report)"
+            if strandeness == '0':
                 tocopy = expand(__feature_counts_0__output_count, sample=manager.samples)
+            elif strandness == '1':
+                tocopy = expand(__feature_counts_1__output_count, sample=manager.samples)
+            elif strandness == "2":
+                tocopy = expand(__feature_counts_2__output_count, sample=manager.samples)
             else:
-                if results[1] > results[2]:
-                    logger.info(msg.format('stranded data'))
-                    tocopy = expand(__feature_counts_1__output_count, sample=manager.samples)
-                else:
-                    logger.info(msg.format('reversely stranded data'))
-                    tocopy = expand(__feature_counts_2__output_count, sample=manager.samples)
+                raise IOError("Strandness is apparently neither of 0,1,2")
     shell("cp {} ./feature_counts/ ".format(" ".join(tocopy)))
 
     # now we build a unique file
