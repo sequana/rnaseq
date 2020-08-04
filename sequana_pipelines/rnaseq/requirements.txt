@@ -7,4 +7,6 @@
 - fastq_screen
 - featureCounts
 - deeptools
+- gffread
+- salmon
 #- cufflinks
