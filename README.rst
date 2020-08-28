@@ -92,6 +92,8 @@ Version   Description
           * indexing options are filled automatically when calling
             sequana_rnaseq based on the presence/absence of the index 
             of the aligner being used.
+          * salmon now integrated and feature counts created (still WIP in
+            sequana)
 0.9.15    * FastQC on raw data skipped by default (FastQC
             for processed data is still available)
           * Added paired options (-p) for featureCounts
