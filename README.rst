@@ -48,7 +48,7 @@ This pipelines requires the following executable(s):
 - bowtie
 - bowtie2
 - STAR
-- featureCounts
+- featureCounts (subread package)
 - picard
 - multiqc
 
@@ -81,6 +81,17 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.9.16    * Best feature_counts is now saved into rnadiff/feature_counts 
+            directory and rnadiff scripts have been updated accordingly
+          * the most probable feature count option is now computed more
+            effectivily and incorporated inside the Snakemake pipeline (not in
+            the onsuccess) so that multiqc picks the best one (not the 3 
+            results)
+          * the target.txt file can be generated inside the pipeline if user
+            fill the rnadiff/conditions section in the config file
+          * indexing options are filled automatically when calling
+            sequana_rnaseq based on the presence/absence of the index 
+            of the aligner being used.
 0.9.15    * FastQC on raw data skipped by default (FastQC
             for processed data is still available)
           * Added paired options (-p) for featureCounts

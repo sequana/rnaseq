@@ -317,7 +317,7 @@ mark_duplicates:
 #            rRNA content. The value should be the rRNA
 #            reference fasta.
 # - options: any options recognised by RNA-seQC tool
-rnaseqc2:
+rnaseqc:
     do: false
     gtf_file:
     options: ' --coverage '

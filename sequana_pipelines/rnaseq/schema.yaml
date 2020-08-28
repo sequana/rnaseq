@@ -206,7 +206,7 @@ mapping:
                 type: bool
             "chrom_sizes_file":
                 type: str
-    'rnaseqc2':
+    'rnaseqc':
         type: map
         mapping:
             "do":

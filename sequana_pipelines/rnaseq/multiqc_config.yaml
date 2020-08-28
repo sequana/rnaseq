@@ -76,6 +76,7 @@ fn_ignore_dirs:
     - annoying_dirname
 fn_ignore_paths:
     - '*/path/to/*_files/'
+    - "*/feature_counts_*/"
 
 # Ignore files larger than this when searcing for logs (bytes)
 log_filesize_limit: 5000000

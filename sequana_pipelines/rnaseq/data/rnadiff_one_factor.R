@@ -42,7 +42,7 @@ fitType <- "parametric"				                 # mean-variance relationship: "param
 geneLengthFile <- "input_gene_lengths.tsv"      # path to the genes lenghts file (default is NULL)
 targetFile <- "target.txt"                      # path to the design/target file
 infoFile <- "input_info.tsv"                    # path to the annotation file (needed if 0 counts not in counts files)
-rawDir <- "../feature_counts"                   # path to the directory containing raw counts files
+rawDir <- "feature_counts"                   # path to the directory containing raw counts files
 
 ###################################################
 ### code chunk number 1: construction autres parametres et divers chargements

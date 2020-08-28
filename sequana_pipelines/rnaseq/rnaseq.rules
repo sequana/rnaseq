@@ -4,6 +4,7 @@ Affiliation: Institut Pasteur @ 2016-2020
 
 This pipeline is part of Sequana software (sequana.readthedocs.io)
 """
+import glob
 import os
 import shutil
 import sequana
@@ -35,6 +36,8 @@ exec(open(sequana.modules["feature_counts_dynamic"], "r").read())
 
 __data__input = manager.getrawdata()
 
+rule all:
+    input: "multiqc/multiqc_report.html"
 
 final_output = []
 
@@ -86,8 +89,8 @@ if manager.config.general.aligner == "bowtie1":
         __bowtie1_index_ref__output_prefix = __prefix_name__
         __bowtie1_index_ref__log           = "logs/indexing/bowtie_genome.log"
         include: bowtie1_index_dynamic("ref")
-    elif os.path.exists(__bowtie1_index_ref__output_done) and do_indexing and force_indexing is False:
-        error(msg_error_indexing_exists.format("bowtie1", __bowtie1_index_ref__output_done))
+    #elif os.path.exists(__bowtie1_index_ref__output_done) and do_indexing and force_indexing is False:
+    #    error(msg_error_indexing_exists.format("bowtie1", __bowtie1_index_ref__output_done))
     elif os.path.exists(__bowtie1_index_ref__output_done) is False and do_indexing is False:
         error(msg_error_indexing_notfound.format("bowtie1", __bowtie1_index_ref__output_done))
 
@@ -138,8 +141,8 @@ if manager.config.general.aligner == "bowtie2":
         __bowtie2_index_ref__log = "logs/indexing/bowtie2_genome.log"
         include: bowtie2_index_dynamic("ref")
         expected_output.extend([__bowtie2_index_ref__output_done])
-    elif os.path.exists(__bowtie2_index_ref__output_done) and do_indexing and force_indexing is False:
-        error(msg_error_indexing_exists.format("bowtie2", __bowtie2_index_ref__output_done))
+    #elif os.path.exists(__bowtie2_index_ref__output_done) and do_indexing and force_indexing is False:
+    #    error(msg_error_indexing_exists.format("bowtie2", __bowtie2_index_ref__output_done))
     elif os.path.exists(__bowtie2_index_ref__output_done) is False and do_indexing is False:
         error(msg_error_indexing_notfound.format("bowtie2", __bowtie2_index_ref__output_done))
 
@@ -157,8 +160,8 @@ elif manager.config.general.aligner  == "star":
         __star_index__log = "logs/indexing/star_genome.log"
         include: sm.modules["star_index"]
         expected_output.extend([genome_directory +  "/SAindex"])
-    elif os.path.exists(__star_index__output_done) and do_indexing and force_indexing is False:
-        error(msg_error_indexing_exists.format("star", __star_index__output_done))
+    #elif os.path.exists(__star_index__output_done) and do_indexing and force_indexing is False:
+    #    error(msg_error_indexing_exists.format("star", __star_index__output_done))
     elif os.path.exists(__star_index__output_done) is False and do_indexing is False:
         error(msg_error_indexing_notfound.format("star", __star_index__output_done))
 
@@ -174,8 +177,8 @@ elif manager.config.general.aligner == "salmon":
         __salmon_index__gff_input =  __gff_file__
         __salmon_index__log = "logs/salmon_indexing/salmon.log"
         include: sm.modules["salmon_index"]
-    elif os.path.exists(__salmon_index__output_done) and do_indexing and force_indexing is False:
-        error(msg_error_indexing_exists.format("salmon", __salmon_index__output_done))
+    #elif os.path.exists(__salmon_index__output_done) and do_indexing and force_indexing is False:
+    #    error(msg_error_indexing_exists.format("salmon", __salmon_index__output_done))
     elif os.path.exists(__salmon_index__output_done) is False and do_indexing is False:
         error(msg_error_indexing_notfound.format("salmon", __salmon_index__output_done))
 
@@ -341,7 +344,7 @@ elif manager.config.general.aligner == "star":
     __mapping_output = __star_mapping__sort
 elif manager.config.general.aligner == "salmon":
     __salmon_mapping__input_fastq = __clean_fastq__output
-    __salmon_mapping__output_counts = "{sample}/salmon_mapping_{sample}/{sample}_quant.sf"
+    __salmon_mapping__output_counts = "{sample}/salmon_mapping/{sample}_quant.sf"
     __salmon_mapping__logs = manager.getname("salmon_mapping", ".logs")
     include: sm.modules["salmon_mapping"]
     expected_output.extend(expand(__salmon_mapping__output_counts, sample=manager.samples))
@@ -378,12 +381,14 @@ if manager.config.general.aligner == "star":
 else :
     __feature_counts__input = __mapping_output
 
+fc_outdir = "rnadiff/feature_counts/"
+
 if manager.config.feature_counts.do and manager.config.general.aligner not in ['salmon']:
     # Guessing strandness is not always straightfoward; Even when we set it; 
     # collaborators may want to look at the other options. So, we compute
     # everything with the 3 different options of strandness.
     # We will copy one of them based on our criteria, but all 3 will be
-    # available though.
+    # available
     __feature_counts_0__output_count = manager.getname("feature_counts_0", "_feature.out")
     __feature_counts__gff = __gff_file__
     __feature_counts__options = config['feature_counts']["options"] + " -s 0 "
@@ -392,7 +397,6 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
     __feature_counts_0__log = manager.getname("feature_counts_0", ".logs")
     __feature_counts__threads = config["feature_counts"]["threads"]
     include: feature_counts_dynamic("0", manager)
-    expected_output.extend(expand(__feature_counts_0__output_count, sample=manager.samples))
 
     __feature_counts_1__output_count = manager.getname("feature_counts_1", "_feature.out")
     __feature_counts_1__log = manager.getname("feature_counts_1", ".logs")
@@ -400,7 +404,6 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
     if manager.paired:
         __feature_counts__options +=  " -p "
     include: feature_counts_dynamic("1", manager)
-    expected_output.extend(expand(__feature_counts_1__output_count, sample=manager.samples))
 
     __feature_counts_2__output_count = manager.getname("feature_counts_2", "_feature.out")
     __feature_counts_2__log = manager.getname("feature_counts_2", ".logs")
@@ -408,7 +411,60 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
     if manager.paired:
         __feature_counts__options +=  " -p "
     include: feature_counts_dynamic("2", manager)
-    expected_output.extend(expand(__feature_counts_2__output_count, sample=manager.samples))
+
+    __guess_strandness__output =expand(fc_outdir + "{sample}_feature.out", sample=manager.samples) 
+    rule guess_strandness:
+        input:
+            fc0= expand(__feature_counts_0__output_count, sample=manager.samples),
+            fc1= expand(__feature_counts_1__output_count, sample=manager.samples),
+            fc2= expand(__feature_counts_2__output_count, sample=manager.samples)
+        output: __guess_strandness__output
+        run:
+            # If user knowns what he/she wants:
+            if "strandness" in config['feature_counts'] and config["feature_counts"]["strandness"]:
+                if int(config['feature_counts']['strandness']) == 0:
+                    choice = "0"
+                elif int(config['feature_counts']['strandness']) == 1:
+                    choice = "1"
+                elif int(config['feature_counts']['strandness']) == 2:
+                    choice = "2"
+            # othrwise guessing strandness
+            else:
+                import sequana.featurecounts as fc
+                probable_strand = fc.get_most_probable_strand_consensus(".")
+                logger.info("strandness inference: {}".format(probable_strand))
+                msg = "This is {probable_strand} data (check in the multiqc report)"
+                if probable_strand in ['0', '1', '2']:
+                    choice = probable_strand
+                    logger.info(msg)
+                else:
+                    logger.warning("Strandness is apparently neither of 0,1,2")
+                    logger.warning("you will need to copy the feature counts files yourself in ./feature_counts")
+            if choice == "0":
+               for filename in input.fc0:
+                   shell("cp {} {}".format(filename, fc_outdir))
+                   shell("cp {}.summary {}".format(filename, fc_fc_outdir))
+            elif choice == "1":
+               for filename in input.fc1:
+                   shell("cp {} {}".format(filename, fc_outdir))
+                   shell("cp {}.summary {}".format(filename, fc_outdir))
+            elif choice == "2":
+               for filename in input.fc2:
+                   shell("cp {} {}".format(filename, fc_outdir))
+                   shell("cp {}.summary {}".format(filename, fc_outdir))
+    expected_output += __guess_strandness__output
+elif manager.config.feature_counts.do and manager.config.general.aligner in ['salmon']:
+
+    __salmon_to_features__input = __salmon_mapping__output_counts
+    __salmon_to_features__output = fc_outdir + "{sample}_feature.out"
+    rule salmon_to_features:
+        input: __salmon_to_features__input
+        output: __salmon_to_features__output
+        params:
+            gff=__gff_file__
+        shell:
+            """sequana salmon --input {input} --output {output} --gff {params.gff} --attribute ID   """
+    expected_output += expand(__salmon_to_features__output, sample=manager.samples)
 
 
 # Add Read group on BAM files
@@ -437,7 +493,7 @@ if config["mark_duplicates"]["do"] and manager.config.general.aligner not in ['s
 
 
 # FIXME do we need the mark_duplicates for RNASEQC2 ? is it compulsary ?
-if config["rnaseqc2"]["do"]:
+if config["rnaseqc"]["do"]:
     if config["mark_duplicates"]['do']:
         __reorderSam__input_sam = __mark_duplicates_ref__output
     else:
@@ -449,29 +505,29 @@ if config["rnaseqc2"]["do"]:
     include: sm.modules["reorderSam"]
     #expected_output.extend(expand(__reorderSam__output, sample=manager.samples))
 
-    # Define input of the rnaseqc2 rule.
+    # Define input of the rnaseqc rule.
     if config["mark_duplicates"]['do']:
-        __rnaseqc2__input_bam = __mark_duplicates_ref__output
+        __rnaseqc__input_bam = __mark_duplicates_ref__output
     else:
-        __rnaseqc2__input_bam = __reorderSam__input_sam
+        __rnaseqc__input_bam = __reorderSam__input_sam
 
-    # for multiqc, important that output directories are called rna_seqc
-    #__rnaseqc2__input_genome = __fasta_file__
-    if os.path.exists(config['rnaseqc2']['gtf_file']):
-        __rnaseqc2__input_gtf = config['rnaseqc2']['gtf_file']
-    elif os.path.exists(genome_directory + os.sep + config['rnaseqc2']['gtf_file']):
-        __rnaseqc2__input_gtf = genome_directory + os.sep + config['rnaseqc2']['gtf_file']
+    # for multiqc, important that output directories are called rnaseqc
+    #__rnaseqc__input_genome = __fasta_file__
+    if os.path.exists(config['rnaseqc']['gtf_file']):
+        __rnaseqc__input_gtf = config['rnaseqc']['gtf_file']
+    elif os.path.exists(genome_directory + os.sep + config['rnaseqc']['gtf_file']):
+        __rnaseqc__input_gtf = genome_directory + os.sep + config['rnaseqc']['gtf_file']
     else:
         error("Could not find {} locally or in {}".format(
-            config['rnaseqc2']['gtf_file'],
+            config['rnaseqc']['gtf_file'],
             config['general']['genome_directory']
         ))
-    __rnaseqc2__params_directory = "{sample}/rna_seqc"
-    __rnaseqc2__logs = "{sample}/rna_seqc/{sample}.log"
-    __rnaseqc2__params_sample = "{sample}"
-    __rnaseqc2__output_metrics = "{sample}/rna_seqc/{sample}.metrics.tsv"
-    include: sm.modules["rnaseqc2"]
-    expected_output.extend(expand(__rnaseqc2__output_metrics, sample=manager.samples))
+    __rnaseqc__params_directory = "{sample}/rnaseqc"
+    __rnaseqc__logs = "{sample}/rnaseqc/{sample}.log"
+    __rnaseqc__params_sample = "{sample}"
+    __rnaseqc__output_metrics = "{sample}/rnaseqc/{sample}.metrics.tsv"
+    include: sm.modules["rnaseqc"]
+    expected_output.extend(expand(__rnaseqc__output_metrics, sample=manager.samples))
 
 
 # !Reset expected_output variable after multiqc
@@ -527,9 +583,6 @@ final_output.extend([__conda__output])
 # Those rules takes a couple of seconds so no need for a cluster
 localrules: conda, rulegraph
 
-rule rnaseq:
-    input: final_output
-
 
 onsuccess:
     # Create plots about stats
@@ -547,7 +600,9 @@ onsuccess:
 
     # copy feature counts
 
-    try:os.mkdir("feature_counts")
+    try: # should be created already
+        os.mkdir("rnadiff")
+        os.mkdir("rnadiff/feature_counts")
     except:pass
 
     try:os.mkdir("rnadiff")
@@ -586,46 +641,27 @@ gff.create_files_for_rnadiff("input", genetic_type="{}", ID="{}", fields={})
         if os.path.exists(filename) is False:
             shutil.copy(filename, outname)
 
-
-    # depending in users choice, we copy the relevant feature counts
+    # depending on users choice, we copy the relevant feature counts
     if manager.config.general.aligner == 'salmon':
         tocopy = expand(__salmon_mapping__output_counts, sample=manager.samples)
-    else:
-        # we use user parameters to figure out whether he/she knows the
-        # strandness and if not, we will guess
-        if "strandness" in config['feature_counts'] and config["feature_counts"]["strandness"]:
-            if int(config['feature_counts']['strandness']) == 0:
-                tocopy = expand(__feature_counts_0__output_count, sample=manager.samples)
-            elif int(config['feature_counts']['strandness']) == 1:
-                tocopy = expand(__feature_counts_1__output_count, sample=manager.samples)
-            elif int(config['feature_counts']['strandness']) == 2:
-                tocopy = expand(__feature_counts_2__output_count, sample=manager.samples)
-        # guessing strandness  otherwise
-        else:
-            probable_strand = fc.get_most_probable_strand_consensus(".")
-            logger.info("strandeness inference: {}".format(probable_strand))
-            msg = "This is {probable_strand} data (check in the multiqc report)"
-            if strandeness == '0':
-                tocopy = expand(__feature_counts_0__output_count, sample=manager.samples)
-            elif strandness == '1':
-                tocopy = expand(__feature_counts_1__output_count, sample=manager.samples)
-            elif strandness == "2":
-                tocopy = expand(__feature_counts_2__output_count, sample=manager.samples)
-            else:
-                raise IOError("Strandness is apparently neither of 0,1,2")
-    shell("cp {} ./feature_counts/ ".format(" ".join(tocopy)))
+        shell("cp {} ./rnadiff/feature_counts/ ".format(" ".join(tocopy)))
 
-    # now we build a unique file
+    # now we build a unique file. Probably not required anywhere
     def create_single_feature_file():
         import glob
-        filenames = glob.glob("feature_counts/*_feature.out")
+        filenames = glob.glob("rnadiff/feature_counts/*_feature.out")
         import pandas as pd
         df = pd.read_csv(filenames[0], sep="\t", skiprows=1)
         for filename in filenames[1:]:
             other_df = pd.read_csv(filename, sep="\t", skiprows=1)
             df = pd.merge(df, other_df)
-        df.to_csv("feature_counts/all_features.out",sep="\t")
+        df.to_csv("rnadiff/feature_counts/all_features.out",sep="\t")
     create_single_feature_file()
+
+    with open("rnadiff/create_target.py", "w") as fout:
+        from sequana_pipelines.rnaseq import create_target
+        with open(create_target.__file__, "r") as fin:
+            fout.write(fin.read())
 
     data = {"name": "rnaseq",
             "rulegraph": __rulegraph__output,
@@ -633,9 +669,18 @@ gff.create_files_for_rnadiff("input", genetic_type="{}", ID="{}", fields={})
     intro ="""
 
     <h2>Overview</h2>
-    The rnaseq pipeline mapped the reads on the provided reference using {}. Features counts were extracted for each sample and stores ./features_counts directory.
+    <p>
+    The rnaseq pipeline maps the reads on the provided reference using {}. Features counts were
+    extracted for each sample using 3 options (stranded, unstranded, reversely stranded). The most
+    relevant option is available in ./features_counts directory and ready to use for differential gene analysis.
+    </p>
+    <p>
     A <a href="multiqc/multiqc_report.html">multiqc report</a> is available, where various QC and mapping quality plots can be visualised. 
-    Here below are the details of the pipeline (parameters) together with summary plots.
+    </p>
+    <p>
+    If present, the DGE results can be found in <a href="rnadiff/rnadiff.html">rnadiff</a> directory.
+    </p>
+
     """.format(config["general"]['aligner'])
     s = SummaryModule2(data, intro)
 

@@ -39,10 +39,6 @@ class Options(argparse.ArgumentParser):
         pipeline_group.add_argument("--aligner", dest="aligner", required=True,
             choices=['bowtie2', 'bowtie1', 'star', "salmon"],
             help= "a mapper in bowtie, bowtie2, star")
-        pipeline_group.add_argument("--do-indexing", dest="do_indexing",
-            action="store_true", help="""If bowtie/star/salmon indexing file are
-                not computed, you will need to compute them by setting
-                this option """)
         pipeline_group.add_argument("--force-indexing", action="store_true",
             default=False,
             help="""If indexing files exists already, but you wish to
@@ -136,12 +132,50 @@ def main(args=None):
     # fill the config file with input parameters
     if options.from_project is None:
         cfg = manager.config.config
-        print(cfg)
 
         # --------------------------------------------------------- general
         cfg.general.genome_directory = os.path.abspath(options.genome_directory)
         cfg.general.aligner = options.aligner
-        cfg.general.indexing = options.do_indexing
+
+        # genome name = cfg.genome.genome_directory
+        genome_name = cfg.general.genome_directory.rsplit("/", 1)[1]
+        prefix= cfg.general.genome_directory + "/" + genome_name
+        if os.path.exists(prefix + ".fa") is False:
+            logger.critical("""Could not find {}. You must have the genome sequence in fasta with the extension .fa named after the genome directory.""".format(prefix+".fa"))
+            sys.exit()
+
+        # Do we need the indexing ?
+        if options.aligner == "bowtie2":
+            if os.path.exists(prefix + ".rev.1.bt2"):
+                logger.info("Indexing found for {}.".format("bowtie2"))
+                cfg.general.indexing = False
+            else:
+                logger.info("Indexing not found for {}. Planned to be run".format("bowtie2"))
+                cfg.general.indexing = True
+        elif options.aligner == "star":
+            if os.path.exists(cfg.general.genome_directory + "/SAindex"):
+                logger.info("Indexing found for {}.".format("STAR"))
+                cfg.general.indexing = False
+            else:
+                logger.info("Indexing not found for {}. Planned to be run".format("STAR"))
+                cfg.general.indexing = True
+        elif options.aligner == "bowtie1":
+            if os.path.exists(prefix + ".rev.1.ebwt"):
+                logger.info("Indexing found for {}.".format("bowtie1"))
+                cfg.general.indexing = False
+            else:
+                logger.info("Indexing not found for {}. Planned to be run".format("bowtie1"))
+                cfg.general.indexing = True
+        elif options.aligner == "salmon":
+            if os.path.exists(cfg.general.genome_directory + "/salmon/salmon.done"):
+                logger.info("Indexing found for {}.".format("salmon"))
+                cfg.general.indexing = False
+            else:
+                logger.info("Indexing not found for {}. Planned to be run".format("salmon"))
+                cfg.general.indexing = True
+
+        cfg.general.indexing = True
+        #options.do_indexing
         cfg.general.force_indexing = options.force_indexing
         cfg.general.rRNA_feature = options.rRNA_feature
 
@@ -166,8 +200,8 @@ def main(args=None):
             cfg.mark_duplicates.do = False
 
         # -------------------------------------------------------- RNAseqQC
-        cfg.rnaseqc2.do = options.do_rnaseqc
-        cfg.rnaseqc2.gtf_file = options.rnaseqc_gtf_file
+        cfg.rnaseqc.do = options.do_rnaseqc
+        cfg.rnaseqc.gtf_file = options.rnaseqc_gtf_file
 
         # -------------------------------------------------------- RNAdiff
         cfg.rnadiff.mode = options.rnadiff_mode
