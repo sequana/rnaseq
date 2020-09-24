@@ -5,8 +5,7 @@ This is is the **rnaseq** pipeline from the `Sequana <https://sequana.readthedoc
 :Output: MultiQC reports and feature Counts
 :Status: Production
 :Citation: Cokelaer et al, (2017), ‘Sequana’: a Set of Snakemake NGS pipelines, Journal of Open Source Software, 2(16), 352, JOSS DOI doi:10.21105/joss.00352
-
-.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.4047837.svg
+:Citation: .. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.4047837.svg
    :target: https://doi.org/10.5281/zenodo.4047837
 
 Installation
