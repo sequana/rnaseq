@@ -431,14 +431,19 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
             # othrwise guessing strandness
             else:
                 import sequana.featurecounts as fc
-                probable_strand = fc.get_most_probable_strand_consensus(".")
+                # FIXME: remove this try/except in a couple of versions
+                try:
+                    tolerance = config['features_counts'][{tolerance']
+                except:
+                    tolerance = 0.1
+                probable_strand = fc.get_most_probable_strand_consensus(".", tolerance=tolerance)
                 logger.info("strandness inference: {}".format(probable_strand))
                 msg = "This is {probable_strand} data (check in the multiqc report)"
                 if probable_strand in ['0', '1', '2']:
                     choice = probable_strand
                     logger.info(msg)
                 else:
-                    logger.warning("Strandness is apparently neither of 0,1,2")
+                    logger.warning("Strandness is apparently neither of 0, 1, 2")
                     logger.warning("you will need to copy the feature counts files yourself in ./feature_counts")
             if choice == "0":
                for filename in input.fc0:

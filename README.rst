@@ -81,6 +81,8 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.9.17    * add the *tolerance* parameter in the feature_counts rule as a user
+            parameter (config and pipeline). 
 0.9.16    * Best feature_counts is now saved into rnadiff/feature_counts 
             directory and rnadiff scripts have been updated accordingly
           * the most probable feature count option is now computed more

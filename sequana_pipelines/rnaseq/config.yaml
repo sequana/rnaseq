@@ -213,8 +213,16 @@ salmon_mapping:
 # - do: if unchecked, this rule is ignored
 # - options: any options recognised by feature_counts tool except -s
 # - threads: number of threads to be used
-# - strand: (optional) if provided, use this option in feature counts otherwise, we will guess
-# 
+# - strandness: (optional) you should provide the strand parameters, given
+#      from the experimental design. If not provided, we will guess it (see
+#      tolerance parameter here below)
+# - tolerance: if strandness is not provided, we will guess it from
+#     the data. The metric used is between 0 and 1. It is a ratio between 
+#     strand + and -. If below tolerance, the strand is reversely stranded. If
+#     above 1-tolerance, it is (forward) stranded. If around 0.5 +- tolerance,
+#     it is unstranded. Otherwise, it means our guess would not be very
+#     reliable. A warning will be raised. Note also that if there is no
+#     consensus across samples, a warning/error may also be raised.
 # in the options, one can use the -t option to specify the feature type in GTF
 # annotation. For example gene, exon (default). The -g option specify the 
 # attribute type in GTF annoation. (gene_id) by default. Finally, 
@@ -225,9 +233,9 @@ salmon_mapping:
 feature_counts:
     do: true
     options: -t gene -g ID    ## if exon/CDS is used, put -O option
-    strandness:  # set to 0,1,2 to force te type of strandness
+    strandness:  # set to 0, 1, 2 to force te type of strandness
     threads: 1
-
+    tolerance: 0.1
 
 #############################################################################
 # bamCoverage write file in bigwig format from BAM files.
