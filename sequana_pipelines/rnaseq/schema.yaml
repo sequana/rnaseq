@@ -122,6 +122,9 @@ mapping:
             "threads":
                 type: int
                 range: { min: 1, max: 8 }
+            "tolerance":
+                type: float
+                range: { min: 0, max: 0.25 }
     'bowtie1_mapping_ref':
         type: map
         mapping:

@@ -433,7 +433,7 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
                 import sequana.featurecounts as fc
                 # FIXME: remove this try/except in a couple of versions
                 try:
-                    tolerance = config['features_counts'][{tolerance']
+                    tolerance = config['features_counts']['tolerance']
                 except:
                     tolerance = 0.1
                 probable_strand = fc.get_most_probable_strand_consensus(".", tolerance=tolerance)

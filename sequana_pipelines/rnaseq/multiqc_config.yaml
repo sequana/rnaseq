@@ -20,7 +20,7 @@
 #-------------------------------------------------------------------------------
 
 # Title to use for the report.
-title: "BXXX"
+title: "sequana_rnaseq MultiQC summary"
 subtitle: "RNA-seq analysis" 
 intro_text: "Report summarising cleaning (cutadapt section) and mapping (stat/bowtie sections) of your FastQ files, as well as feature counts (featureCounts section) and quick contaminant search (fastq screen section)"
 
