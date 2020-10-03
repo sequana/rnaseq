@@ -83,6 +83,8 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.9.18    * Fix typo (regression bug) + add tolerance in schema + generic 
+            title in multiqc_config. (oct 2020)
 0.9.17    * add the *tolerance* parameter in the feature_counts rule as a user
             parameter (config and pipeline). 
 0.9.16    * Best feature_counts is now saved into rnadiff/feature_counts 
