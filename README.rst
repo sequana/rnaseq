@@ -83,6 +83,9 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.9.19    * Remove the try/except around tolerance (guess of strandness) to 
+            make sure this is provided by the user. Final onsuccess benefits
+            from faster GFF function (sequana 0.9.4)
 0.9.18    * Fix typo (regression bug) + add tolerance in schema + generic 
             title in multiqc_config. (oct 2020)
 0.9.17    * add the *tolerance* parameter in the feature_counts rule as a user

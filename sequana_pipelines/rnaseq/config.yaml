@@ -222,7 +222,8 @@ salmon_mapping:
 #     above 1-tolerance, it is (forward) stranded. If around 0.5 +- tolerance,
 #     it is unstranded. Otherwise, it means our guess would not be very
 #     reliable. A warning will be raised. Note also that if there is no
-#     consensus across samples, a warning/error may also be raised.
+#     consensus across samples, a warning/error may also be raised. tolerance
+#     is therefore in the range [0-0.25]
 # in the options, one can use the -t option to specify the feature type in GTF
 # annotation. For example gene, exon (default). The -g option specify the 
 # attribute type in GTF annoation. (gene_id) by default. Finally, 

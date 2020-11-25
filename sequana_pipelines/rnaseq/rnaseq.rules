@@ -431,12 +431,9 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
             # othrwise guessing strandness
             else:
                 import sequana.featurecounts as fc
-                # FIXME: remove this try/except in a couple of versions
-                try:
-                    tolerance = config['features_counts']['tolerance']
-                except:
-                    tolerance = 0.1
-                probable_strand = fc.get_most_probable_strand_consensus(".", tolerance=tolerance)
+                tolerance = config['features_counts']['tolerance']
+                probable_strand = fc.get_most_probable_strand_consensus(
+                    ".", tolerance=tolerance)
                 logger.info("strandness inference: {}".format(probable_strand))
                 msg = "This is {probable_strand} data (check in the multiqc report)"
                 if probable_strand in ['0', '1', '2']:
@@ -565,24 +562,6 @@ final_output.extend([__rulegraph__output])
 __conda__output = "requirements.txt"
 include: sm.modules['conda']   # Create requirements.txt(dependencies)
 final_output.extend([__conda__output])
-
-
-# create a json file that summarise information of your pipeline
-#__summary_pipeline__inputs = __data__input
-#if manager.config.cutadapt.do:
-#    __summary_pipeline__outputs = [ __cutadapt__output ]
-#
-#__summary_pipeline__html = []
-#__summary_pipeline__rulegraph = __rulegraph__output
-#__summary_pipeline__requirements = "requirements.txt"
-#__summary_pipeline__snakefile = __snakefile__
-#__summary_pipeline__config = "config.yaml"
-#__summary_pipeline__name = "RNA-seq"
-#__summary_pipeline__json_output = manager.getname("summary_pipeline", ".json")
-#include: sm.modules["summary_pipeline"]
-#expected_output.append(expand(__summary_pipeline__json_output,
-#                              sample=manager.samples))
-
 
 
 # Those rules takes a couple of seconds so no need for a cluster
