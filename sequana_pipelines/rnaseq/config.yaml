@@ -235,7 +235,7 @@ feature_counts:
     options: -t gene -g ID    ## if exon/CDS is used, put -O option
     strandness:  # set to 0, 1, 2 to force te type of strandness
     threads: 1
-    tolerance: 0.1
+    tolerance: 0.15
 
 #############################################################################
 # bamCoverage write file in bigwig format from BAM files.
