@@ -423,37 +423,51 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
             # If user knowns what he/she wants:
             if "strandness" in config['feature_counts'] and config["feature_counts"]["strandness"]:
                 if int(config['feature_counts']['strandness']) == 0:
-                    choice = "0"
+                    choice = 0
                 elif int(config['feature_counts']['strandness']) == 1:
-                    choice = "1"
+                    choice = 1
                 elif int(config['feature_counts']['strandness']) == 2:
-                    choice = "2"
+                    choice = 2
             # othrwise guessing strandness
             else:
                 import sequana.featurecounts as fc
-                tolerance = config['features_counts']['tolerance']
-                probable_strand = fc.get_most_probable_strand_consensus(
-                    ".", tolerance=tolerance)
+                try:
+                    tolerance = config['feature_counts']['tolerance']
+                except:
+                    tolerance = 0.12
+                probable_strand, strand_df = fc.get_most_probable_strand_consensus(".", tolerance=tolerance)
                 logger.info("strandness inference: {}".format(probable_strand))
                 msg = "This is {probable_strand} data (check in the multiqc report)"
-                if probable_strand in ['0', '1', '2']:
+                if probable_strand in [0, 1, 2]:
                     choice = probable_strand
                     logger.info(msg)
                 else:
                     logger.warning("Strandness is apparently neither of 0, 1, 2")
                     logger.warning("you will need to copy the feature counts files yourself in ./feature_counts")
-            if choice == "0":
+                    choice = -1
+            if choice == 0:
                for filename in input.fc0:
                    shell("cp {} {}".format(filename, fc_outdir))
-                   shell("cp {}.summary {}".format(filename, fc_fc_outdir))
-            elif choice == "1":
+                   shell("cp {}.summary {}".format(filename, fc_outdir))
+            elif choice == 1:
                for filename in input.fc1:
                    shell("cp {} {}".format(filename, fc_outdir))
                    shell("cp {}.summary {}".format(filename, fc_outdir))
-            elif choice == "2":
+            elif choice == 2:
                for filename in input.fc2:
                    shell("cp {} {}".format(filename, fc_outdir))
                    shell("cp {}.summary {}".format(filename, fc_outdir))
+            else:
+                # if not clear, we copy everything and users should clean up the directory
+                for filename in input.fc0:
+                    shell("cp {} {}".format(filename, fc_outdir))
+                    shell("cp {}.summary {}".format(filename, fc_outdir))
+                for filename in input.fc1:
+                    shell("cp {} {}".format(filename, fc_outdir))
+                    shell("cp {}.summary {}".format(filename, fc_outdir))
+                for filename in input.fc2:
+                    shell("cp {} {}".format(filename, fc_outdir))
+                    shell("cp {}.summary {}".format(filename, fc_outdir))
     expected_output += __guess_strandness__output
 elif manager.config.feature_counts.do and manager.config.general.aligner in ['salmon']:
 

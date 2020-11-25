@@ -7,7 +7,7 @@
 # If input_directory provided, use it otherwise if input_pattern provided,
 # use it, otherwise use input_samples.
 # ============================================================================
-input_directory: /home/cokelaer/Work/github/sequana_rnaseq/sequana_pipelines/rnaseq/data
+input_directory: 
 input_readtag: _R[12]_
 input_pattern: '*fastq.gz'
 # =========================================== Sections for the users
@@ -236,7 +236,7 @@ feature_counts:
     options: -t gene -g ID    ## if exon/CDS is used, put -O option
     strandness:  # set to 0, 1, 2 to force te type of strandness
     threads: 1
-    tolerance: 0.1
+    tolerance: 0.15
 
 #############################################################################
 # bamCoverage write file in bigwig format from BAM files.
