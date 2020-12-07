@@ -20,9 +20,9 @@ input_pattern: '*fastq.gz'
 # - aligner: either star, bowtie or bowtie2. fastq_screen, if checked, uses
 #        either bowtie2 by default.
 # - genome_directory: directory where all indexes are written.
-# - rRNA_file: path to an existing fasta file for ribosomal RNA (to be found in
+# - rRNA_contaminant: path to an existing fasta file for ribosomal RNA (to be found in
 #   genome_directory)
-# - rRNA_feature: if rRNA_file is not provided, ribosomal RNA will be extract
+# - rRNA_feature: if rRNA_contaminant is not provided, ribosomal RNA will be extract
 #     from GFF using this feature name. It must be found. 
 # - indexing: if indexing is set to True, the index for bowtie1 will be done as
 #   well as the indexing of the aligner provided. If the files exists already, not
@@ -33,7 +33,7 @@ input_pattern: '*fastq.gz'
 general:
     aligner: star
     genome_directory: 
-    rRNA_file: ""
+    contaminant_file: ""
     rRNA_feature: rRNA
     indexing: false
     force_indexing: false
@@ -135,10 +135,11 @@ cutadapt:
 #
 # - do: if unchecked, this rule is ignored
 # - conf: the name of the configuration file
+# - aligner: should be bowtie2. do not change
 #
 fastq_screen:
     do: false
-    conf: fastq_screen.conf
+    config_file: fastq_screen.conf
     options: --subset 200000
     aligner: bowtie2
     report: true
@@ -155,7 +156,8 @@ fastq_screen:
 # - threads: number of threads to be used
 #
 bowtie1_mapping_rna:
-    do: true
+    # remove in v1.20 and ste automatically to on if rRNA provided
+    # do: true
     options: ''
     threads: 4
 

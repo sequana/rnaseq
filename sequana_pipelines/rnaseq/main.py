@@ -1,7 +1,29 @@
+# -*- coding: utf-8 -*-
+#
+#  This file is part of Sequana software
+#
+#  Copyright (c) 2016-2020 - Sequana Development Team
+#
+#  File author(s):
+#      Thomas Cokelaer <thomas.cokelaer@pasteur.fr>
+#      Rachel Legendre <rachel.legendre@pasteur.fr>
+#      Etienne Kornobis <etienne.kornobis@pasteur.fr>
+#
+#  Distributed under the terms of the 3-clause BSD license.
+#  The full license is in the LICENSE file, distributed with this software.
+#
+#  website: https://github.com/sequana/sequana
+#  documentation: http://sequana.readthedocs.io
+#
+##############################################################################
+
+
+
 import sys
 import os
 import argparse
 import shutil
+import subprocess
 
 from sequana_pipetools.options import *
 from sequana_pipetools.misc import Colors
@@ -45,7 +67,13 @@ class Options(argparse.ArgumentParser):
                 create them again, use this option""")
         pipeline_group.add_argument("--rRNA-feature",
             default="rRNA",
-            help="""Feature name corresponding to the rRNA to be identified for QCs""")
+            help="""Feature name corresponding to the rRNA to be identified in
+the input GFF/GTF files""")
+        pipeline_group.add_argument("--contaminant-file",
+            default=None,
+            help="""A fasta file. If used, the rRNA-feature cannot be used. 
+This option is useful if you have a dedicated list of rRNA feature or a dedicatd 
+fasta file to search for contaminants""")
 
         # cutadapt related
         so = CutadaptOptions()
@@ -53,15 +81,17 @@ class Options(argparse.ArgumentParser):
 
         # fastq_screen
         pipeline_group = self.add_argument_group("section_fastq_screen")
-        pipeline_group.add_argument("--do-fastq-screen", action="store_true",
+        pipeline_group.add_argument("--skip-fastq-screen", action="store_true",
             default=False,
-            help="run fastq_screen ")
+            help="skip fastq_screen ")
         pipeline_group.add_argument("--fastq-screen-conf",
             default="fastq_screen.conf", type=str,
             help="""a valid fastqc_screen.conf file. See fastq_screen
-documentation for details. In a nutsheel, add a line for each genome you want to
+documentation for details. In a nutshell, add a line for each genome you want to
 search for in your input data. Each line is 'DATABASE name path BOWTIE2'. The
-path includes the path to the genome + its prefix name.  """)
+path includes the path to the genome + its prefix name. If you have your 
+own fastq-screen DB and configuration file, use this option. Otherwise, the 
+default sequana_rnaseq conf is used (phiX174 only)""")
 
         pipeline_group = self.add_argument_group("section_feature_counts")
         pipeline_group.add_argument("--feature-counts-strandness",
@@ -73,6 +103,10 @@ stranded. If you do not know, let the pipeline guess for you.""")
             help="""options for feature counts. -t should be followed by a valid
 feature type, -g by a valid attribute name. Do not use -s option, use the
 --feature-counts-strandness parameter instead.""")
+
+        self.add_argument("--run", default=False, action="store_true",
+            help="execute the pipeline directly")
+
 
         pipeline_group = self.add_argument_group("pipeline_others")
         pipeline_group.add_argument('--do-igvtools', action="store_true")
@@ -88,9 +122,10 @@ feature type, -g by a valid attribute name. Do not use -s option, use the
         # RNADIFF
         pipeline_group = self.add_argument_group("section_rnadiff")
         pipeline_group.add_argument('--rnadiff-mode', type=str,
-            required=True,
+            required=False,
             choices=["one_factor", "GLM"],
-            help="""Fix the type of analyis (one_factor or GLM)""")
+            default="one_factor",
+            help="""Fix the type of analyis (one_factor or GLM). By default uses one_factor""")
 
     def parse_args(self, *args):
         args_list = list(*args)
@@ -139,28 +174,29 @@ def main(args=None):
 
         # genome name = cfg.genome.genome_directory
         genome_name = cfg.general.genome_directory.rsplit("/", 1)[1]
-        prefix= cfg.general.genome_directory + "/" + genome_name
-        if os.path.exists(prefix + ".fa") is False:
-            logger.critical("""Could not find {}. You must have the genome sequence in fasta with the extension .fa named after the genome directory.""".format(prefix+".fa"))
+        prefix= cfg.general.genome_directory 
+        fasta = cfg.general.genome_directory + f"/{genome_name}.fa"
+        if os.path.exists(fasta) is False:
+            logger.critical("""Could not find {}. You must have the genome sequence in fasta with the extension .fa named after the genome directory.""".format(fasta))
             sys.exit()
 
         # Do we need the indexing ?
         if options.aligner == "bowtie2":
-            if os.path.exists(prefix + ".rev.1.bt2"):
+            if os.path.exists(prefix + f"/bowtie2/{genome_name}.rev.1.bt2"):
                 logger.info("Indexing found for {}.".format("bowtie2"))
                 cfg.general.indexing = False
             else:
                 logger.info("Indexing not found for {}. Planned to be run".format("bowtie2"))
                 cfg.general.indexing = True
         elif options.aligner == "star":
-            if os.path.exists(cfg.general.genome_directory + "/SAindex"):
+            if os.path.exists(prefix + f"/star/SAindex"):
                 logger.info("Indexing found for {}.".format("STAR"))
                 cfg.general.indexing = False
             else:
                 logger.info("Indexing not found for {}. Planned to be run".format("STAR"))
                 cfg.general.indexing = True
         elif options.aligner == "bowtie1":
-            if os.path.exists(prefix + ".rev.1.ebwt"):
+            if os.path.exists(prefix + f"/bowtie1/{genome_name}.rev.1.ebwt"):
                 logger.info("Indexing found for {}.".format("bowtie1"))
                 cfg.general.indexing = False
             else:
@@ -178,6 +214,11 @@ def main(args=None):
         #options.do_indexing
         cfg.general.force_indexing = options.force_indexing
         cfg.general.rRNA_feature = options.rRNA_feature
+        cfg.general.contaminant_file = options.contaminant_file
+
+        if options.rRNA_feature and options.contaminant_file:
+            logger.error("--rRNA-feature and --contaminant-file are mutually exclusive")
+            sys.exit(1)
 
         # --------------------------------------------------------- cutadapt
         cfg.cutadapt.do = not options.skip_cutadapt
@@ -207,18 +248,20 @@ def main(args=None):
         cfg.rnadiff.mode = options.rnadiff_mode
 
         # ----------------------------------------------------- fastq_screen conf
-        if options.do_fastq_screen:
+        # copy the default fastq_screen conf file
+        import sequana_pipelines.rnaseq
+        shutil.copy(os.path.join(sequana_pipelines.rnaseq.__path__[0] ,
+                "fastq_screen.conf"), manager.workdir)
+        if options.skip_fastq_screen:
+            cfg.fastq_screen.do = False
+        else:
             cfg.fastq_screen.do = True
-            manager.exists(options.fastq_screen_conf)
-            cfg.fastq_screen_conf = os.path.abspath(options.fastq_screen_conf)
+
+        if os.path.exists(options.fastq_screen_conf):
+            cfg.fastq_screen.config_file = os.path.abspath(options.fastq_screen_conf)
             # copy the fastq_screen.conf input or default file
             shutil.copy(options.fastq_screen_conf, manager.workdir)
-        else:
-            cfg.fastq_screen.do = False
-            # copy the default fastq_screen conf file
-            import sequana_pipelines.rnaseq
-            shutil.copy(os.path.join(sequana_pipelines.rnaseq.__path__[0] ,
-                "fastq_screen.conf"), manager.workdir)
+            
 
         # SANITY CHECKS
         # -------------------------------------- do we find rRNA feature in the GFF ?
@@ -257,6 +300,12 @@ def main(args=None):
     # finalise the command and save it; copy the snakemake. update the config
     # file and save it.
     manager.teardown()
+
+
+    if options.run:
+        subprocess.Popen(["sh", '{}.sh'.format(NAME)], cwd=options.workdir)
+
+
 
 if __name__ == "__main__":
     main()

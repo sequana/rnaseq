@@ -36,8 +36,8 @@ exec(open(sequana.modules["feature_counts_dynamic"], "r").read())
 
 __data__input = manager.getrawdata()
 
-rule all:
-    input: "multiqc/multiqc_report.html"
+rule pipeline:
+    input: "multiqc/multiqc_report.html", ".sequana/rulegraph.svg", "outputs/strand_summary.csv",
 
 final_output = []
 
@@ -75,8 +75,8 @@ msg_error_indexing_notfound = "Indexing file for {} not found ({}). "+\
     "Set general::indexing to True in the config file"
 
 if manager.config.general.aligner == "bowtie1":
-    __bowtie1_index_ref__output_done   = __prefix_name__ + ".1.ebwt"
-    __bowtie1_index__ = __prefix_name__
+    __bowtie1_index_ref__output_done   = genome_directory + f"/bowtie1/{genome_name}.1.ebwt"
+    __bowtie1_index__ = genome_directory + f"/bowtie1/{genome_name}"
 
     if os.path.exists(__bowtie1_index_ref__output_done) and do_indexing is False:
         pass # index exists, no need to do it, everything should be fine
@@ -86,23 +86,23 @@ if manager.config.general.aligner == "bowtie1":
         # OR if the file exists but we want to overwrite it 
         __bowtie1_index_ref__fasta         = __fasta_file__
         #__bowtie1_index_ref__output_done   # defined above
-        __bowtie1_index_ref__output_prefix = __prefix_name__
-        __bowtie1_index_ref__log           = "logs/indexing/bowtie_genome.log"
+        __bowtie1_index_ref__output_prefix =    genome_directory + f"/bowtie1/{genome_name}"
+        __bowtie1_index_ref__log           = "logs/indexing/bowtie1_genome.log"
         include: bowtie1_index_dynamic("ref")
     #elif os.path.exists(__bowtie1_index_ref__output_done) and do_indexing and force_indexing is False:
     #    error(msg_error_indexing_exists.format("bowtie1", __bowtie1_index_ref__output_done))
     elif os.path.exists(__bowtie1_index_ref__output_done) is False and do_indexing is False:
         error(msg_error_indexing_notfound.format("bowtie1", __bowtie1_index_ref__output_done))
 
-if manager.config.general.rRNA_file and manager.config.general.rRNA_feature:
-    error("Either set rRNA_file or rRNA_feature in the config file, not both.")
+if manager.config.general.contaminant_file and manager.config.general.rRNA_feature:
+    error("Either set contaminant_file or rRNA_feature in the config file, not both.")
 
 # =========================================================================== rRNA genome
-if manager.config.general.rRNA_file:
-    __bowtie1_index_rna__fasta = config['general']["genome_directory"] + os.sep + config["general"]["rRNA_file"]
+if manager.config.general.contaminant_file:
+    __bowtie1_index_rna__fasta = config['general']["genome_directory"] + os.sep + config["general"]["contaminant_file"]
     if os.path.exists(__bowtie1_index_rna__fasta) is False:
         error("File {} does not exists. Check your config file".format(__bowtie1_index_rna__fasta))
-else:
+elif manager.config.general.rRNA_feature:
     # extract rRNA feature from GFF and get corresponding fasta
     # and gff. if no match for rRNA, save empty fasta as AAAAAAAAAAA
     __extract_fasta_from_bed__input =       __fasta_file__
@@ -115,11 +115,13 @@ else:
 
     # This is fast, so we do it again
     __bowtie1_index_rna__fasta = __extract_fasta_from_bed__output
-__bowtie1_index_rna__output_done = __prefix_name__ + "_rRNA.1.ebwt"
-__bowtie1_index_rna__output_prefix = __prefix_name__ + "_rRNA"
-__bowtie1_index_rna__log = "logs/indexing/bowtie_rRNA.log"
-include: bowtie1_index_dynamic("rna")
-__RNA_index__ = __bowtie1_index_rna__output_prefix
+
+if manager.config.general.contaminant_file or manager.config.general.rRNA_feature:
+    __bowtie1_index_rna__output_done = __prefix_name__ + "_rRNA.1.ebwt"
+    __bowtie1_index_rna__output_prefix = __prefix_name__ + "_rRNA"
+    __bowtie1_index_rna__log = "logs/bowtie1_indexing/bowtie_rRNA.log"
+    include: bowtie1_index_dynamic("rna")
+    __RNA_index__ = __bowtie1_index_rna__output_prefix
 
 # ============================================================================ bowtie2 index
 
@@ -128,57 +130,48 @@ if manager.config.general.aligner == "bowtie2":
         bt2_ext = "bt2l"
     else: 
         bt2_ext = "bt2"
-    __bowtie2_index_ref__output_done   = __prefix_name__ + ".1.{}".format(bt2_ext)
-    __bowtie2_index__ = __prefix_name__
+
+    # These two variables are used elsewhere and in the rule below
+    __bowtie2_index_ref__output_done   = genome_directory + f"/bowtie2/{genome_name}.1.{bt2_ext}"
+    __bowtie2_index__ = genome_directory + f"/bowtie2/{genome_name}"
+
     if os.path.exists(__bowtie2_index_ref__output_done) and do_indexing is False:
         pass # index exists, no need to do it, everything should be fine
     elif (os.path.exists(__bowtie2_index_ref__output_done) and do_indexing and force_indexing) or \
         (os.path.exists(__bowtie2_index_ref__output_done) is False and do_indexing):
-        # indexing for bowtie2
         __bowtie2_index_ref__fasta =            __fasta_file__
-        __bowtie2_index_ref__output_done =      __prefix_name__ + ".1.{}".format(bt2_ext)
-        __bowtie2_index_ref__output_prefix =    __prefix_name__
+        #__bowtie2_index_ref__output_done   # defined above
+        __bowtie2_index_ref__output_prefix =    genome_directory + f"/bowtie2/{genome_name}"
         __bowtie2_index_ref__log = "logs/indexing/bowtie2_genome.log"
         include: bowtie2_index_dynamic("ref")
-        expected_output.extend([__bowtie2_index_ref__output_done])
-    #elif os.path.exists(__bowtie2_index_ref__output_done) and do_indexing and force_indexing is False:
-    #    error(msg_error_indexing_exists.format("bowtie2", __bowtie2_index_ref__output_done))
     elif os.path.exists(__bowtie2_index_ref__output_done) is False and do_indexing is False:
         error(msg_error_indexing_notfound.format("bowtie2", __bowtie2_index_ref__output_done))
 
 elif manager.config.general.aligner  == "star":
-    __star_index__output_done = genome_directory +  "/SAindex"
-    __star_dir__ = genome_directory
+    __star_index__output_done = genome_directory +  "/star/SAindex"
+    __star_dir__ = genome_directory + "/star"
     if os.path.exists(__star_index__output_done) and do_indexing is False:
         pass # index exists, no need to do it, everything should be fine
     elif (os.path.exists(__star_index__output_done) and do_indexing and force_indexing) or \
         (os.path.exists(__star_index__output_done) is False and do_indexing):
-        # indexing for star
         __star_index__fasta =  __fasta_file__
-        #__star_index__output_done = genome_directory +  "/SAindex"
-        __star_index__output_dir =  genome_directory
+        __star_index__output_dir =  genome_directory + "/star"
         __star_index__log = "logs/indexing/star_genome.log"
         include: sm.modules["star_index"]
-        expected_output.extend([genome_directory +  "/SAindex"])
-    #elif os.path.exists(__star_index__output_done) and do_indexing and force_indexing is False:
-    #    error(msg_error_indexing_exists.format("star", __star_index__output_done))
     elif os.path.exists(__star_index__output_done) is False and do_indexing is False:
         error(msg_error_indexing_notfound.format("star", __star_index__output_done))
 
 elif manager.config.general.aligner == "salmon":
     __salmon_index__output_done = genome_directory + "/salmon/salmon.done"
     __salmon_index__genome_dir =  genome_directory + "/salmon"
-    #__salmon_index__ = __prefix_name__
     if os.path.exists(__salmon_index__output_done) and do_indexing is False:
         pass # index exists, no need to do it, everything should be fine
     elif (os.path.exists(__salmon_index__output_done) and do_indexing and force_indexing) or \
         (os.path.exists(__salmon_index__output_done) is False and do_indexing):
         __salmon_index__fasta_input =  __fasta_file__
         __salmon_index__gff_input =  __gff_file__
-        __salmon_index__log = "logs/salmon_indexing/salmon.log"
+        __salmon_index__log = "logs/indexing/salmon.log"
         include: sm.modules["salmon_index"]
-    #elif os.path.exists(__salmon_index__output_done) and do_indexing and force_indexing is False:
-    #    error(msg_error_indexing_exists.format("salmon", __salmon_index__output_done))
     elif os.path.exists(__salmon_index__output_done) is False and do_indexing is False:
         error(msg_error_indexing_notfound.format("salmon", __salmon_index__output_done))
 
@@ -236,6 +229,23 @@ else:
 
 
 if manager.config.fastq_screen.do:
+
+    # if users has not changed the fastq_screen conf file, we can build the phix
+    if os.path.exists("fastq_screen.conf"):
+        if "DATABASE\tphiX174\t.genomes/phiX174/phiX174 BOWTIE2\n" in open("fastq_screen.conf").readlines():
+            shell("mkdir -p .genomes/phiX174")
+
+            # copy the phiX174.fa
+            from sequana.pipelines_common import get_pipeline_location as getpath
+            phix = getpath("rnaseq") + "/phiX174.fa"
+
+            # build index
+            shell("cp {} .genomes/phiX174".format(phix))
+            shell("cd .genomes/phiX174 ; bowtie2-build -f phiX174.fa phiX174 1> phiX174.log 2> phiX174.err; cd ..")
+            shell("cd .genomes/phiX174 ; samtools faidx phiX174.fa; cd ..")
+    # TODO:
+    # check existence of all indexing file for each entry in fastqscree
+
     # Fastq Screen
     __fastq_screen__input = __clean_fastq__output
     __fastq_screen__logs = manager.getname("fastq_screen", ".logs")
@@ -287,7 +297,7 @@ v0.9.14.
 """
 
 
-if manager.config.bowtie1_mapping_rna.do:
+if manager.config.general.rRNA_feature or manager.config.general.contaminant_file:
     # rRNA
     __bowtie1_mapping_rna__input = __unpigz__output
     __bowtie1_mapping_rna__index_done = __bowtie1_index_rna__output_done
@@ -418,33 +428,41 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
             fc0= expand(__feature_counts_0__output_count, sample=manager.samples),
             fc1= expand(__feature_counts_1__output_count, sample=manager.samples),
             fc2= expand(__feature_counts_2__output_count, sample=manager.samples)
-        output: __guess_strandness__output
+        output: 
+            data=__guess_strandness__output,
+            summary="outputs/strand_summary.csv",
         run:
-            # If user knowns what he/she wants:
-            if "strandness" in config['feature_counts'] and config["feature_counts"]["strandness"]:
-                if int(config['feature_counts']['strandness']) == 0:
-                    choice = 0
-                elif int(config['feature_counts']['strandness']) == 1:
-                    choice = 1
-                elif int(config['feature_counts']['strandness']) == 2:
-                    choice = 2
-            # othrwise guessing strandness
+            # We compute all strandness
+            import sequana.featurecounts as fc
+            tolerance = config['feature_counts']['tolerance']
+            probable_strand, strand_df = fc.get_most_probable_strand_consensus(".", tolerance=tolerance)
+            strand_df.to_csv(output.summary)
+            try:
+                import pylab
+                strand_df['strandness'].plot( kind='bar')
+                pylab.ylim([0,1])
+                pylab.ylabel("Strandness", fontsize=12)
+                pylab.savefig("outputs/strand_summary.png")
+            except Exception:
+                pass
+            logger.info("strandness inference: {}".format(probable_strand))
+            msg = "This is {probable_strand} data (check in the multiqc report)"
+            if probable_strand in [0, 1, 2]:
+                choice = probable_strand
+                logger.info(msg)
             else:
-                import sequana.featurecounts as fc
-                try:
-                    tolerance = config['feature_counts']['tolerance']
-                except:
-                    tolerance = 0.12
-                probable_strand, strand_df = fc.get_most_probable_strand_consensus(".", tolerance=tolerance)
-                logger.info("strandness inference: {}".format(probable_strand))
-                msg = "This is {probable_strand} data (check in the multiqc report)"
-                if probable_strand in [0, 1, 2]:
-                    choice = probable_strand
-                    logger.info(msg)
+                logger.warning("Strandness is apparently neither of 0, 1, 2")
+                logger.warning("you will need to copy the feature counts files yourself in ./feature_counts")
+                choice = -1
+
+            # If user knowns what he/she wants we overwrite the choice
+            if "strandness" in config['feature_counts'] and config["feature_counts"]["strandness"]:
+                user_choice =  int(config["feature_counts"]["strandness"])
+                if user_choice in [0,1,2]:
+                    choice = user_choice
                 else:
-                    logger.warning("Strandness is apparently neither of 0, 1, 2")
-                    logger.warning("you will need to copy the feature counts files yourself in ./feature_counts")
-                    choice = -1
+                    logger.error(f"strandness in the config file must be 0,1,2. You gave {user_choice}")
+
             if choice == 0:
                for filename in input.fc0:
                    shell("cp {} {}".format(filename, fc_outdir))
@@ -553,7 +571,7 @@ if config["rnaseqc"]["do"]:
 __multiqc__input = expected_output
 __multiqc__input_dir = "."
 __multiqc__logs = "multiqc/multiqc.log"
-__multiqc__output = config['multiqc']['output_directory'] + "/multiqc_report.html"
+__multiqc__output = "multiqc/multiqc_report.html"
 if config['multiqc']['config_file']:
     __multiqc__options = " -c " + config['multiqc']['config_file'] + " "+config['multiqc']['options']
 else :
@@ -567,9 +585,8 @@ final_output.extend([__multiqc__output])
 # Include rule graph for each sample
 __rulegraph__input = manager.snakefile
 __rulegraph__output = ".sequana/rulegraph.svg"
-__rulegraph__mapper = {"multiqc": "multiqc_report.html"}
+__rulegraph__mapper = {"multiqc": "../multiqc/multiqc_report.html"}
 include: sm.modules['rulegraph']
-final_output.extend([__rulegraph__output])
 
 
 # Add Conda
@@ -591,7 +608,9 @@ onsuccess:
     from sequana.modules_report.summary import SummaryModule2
 
     logger.level = "INFO"
-    manager.teardown(extra_files_to_remove=["fastq_screen.conf", "requirements.txt"])
+    manager.teardown(
+        extra_files_to_remove=["fastq_screen.conf", "requirements.txt"],
+        extra_dirs_to_remove=[".genomes", "tmp", "logs"])
     manager.clean_multiqc(__multiqc__output)
 
     #manager.plot_stats(N=len(manager.samples))
@@ -661,22 +680,39 @@ gff.create_files_for_rnadiff("input", genetic_type="{}", ID="{}", fields={})
         with open(create_target.__file__, "r") as fin:
             fout.write(fin.read())
 
+
+    # THE HTML REPORT is defined hereafter
     data = {"name": "rnaseq",
             "rulegraph": __rulegraph__output,
             "stats": "stats.txt"}
     intro ="""
-
     <h2>Overview</h2>
     <p>
     The rnaseq pipeline maps the reads on the provided reference using {}. Features counts were
     extracted for each sample using 3 options (stranded, unstranded, reversely stranded). The most
     relevant option is available in ./features_counts directory and ready to use for differential gene analysis.
     </p>
-    <p>
-    A <a href="multiqc/multiqc_report.html">multiqc report</a> is available, where various QC and mapping quality plots can be visualised. 
+
+    <p>A <a href="multiqc/multiqc_report.html">multiqc report</a> is available, where various QC and mapping quality plots can be visualised.
     </p>
+
+    <p>Here below is the strandness found for each samples. 
+    """
+
+    if "strandness" in config['feature_counts'] and config["feature_counts"]["strandness"]:
+        choice = config["feature_counts"]["strandness"]
+        intro += "User decided to set strandness to: {} </p>".format(choice)
+    else:
+        intro += "Strandness was guessed from the data. </p>"
+
+    image = SummaryModule2.png_to_embedded_png("dummy", "outputs/strand_summary.png", 
+                 style="width:80%; height:40%")
+    intro+=image
+    #else:
+
+    intro+=    """
     <p>
-    If present, the DGE results can be found in <a href="rnadiff/rnadiff.html">rnadiff</a> directory.
+    Differential gene expression analysis is not performed automatically with this pipeline. However, information, feature counts, and other materials can be found in the directory ./randiff. Most probably an analysis is present. If so, please open the report <a href="rnadiff/rnadiff.html">rnadiff</a>.
     </p>
 
     """.format(config["general"]['aligner'])
