@@ -83,6 +83,20 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.9.20    * 7/12/2020
+          * BUG in sequana/star rules v0.9.6. Fixed in this release.
+          * In config file, bowtie section 'do' option is removed. This is now
+            set automatically if rRNA_feature or rRNA_file is provided. This
+            allows us to skip the rRNA mapping entirely if needed.
+          * fastq_screen should be functional. Default behaviour is off. If 
+            set only phiX174 will be search for. Users should build their own
+            configuration file.
+          * star/bowtie1/bowtie2 have now their own sub-directories in the 
+            genome directory. 
+          * added --run option to start pipeline automatically (if you know
+            what you are doing)
+          * rnadiff option has now a default value (one_factor)
+          * add strandness plot in the HTML summary page
 0.9.19    * Remove the try/except around tolerance (guess of strandness) to 
             make sure this is provided by the user. Final onsuccess benefits
             from faster GFF function (sequana 0.9.4)

@@ -81,9 +81,9 @@ fasta file to search for contaminants""")
 
         # fastq_screen
         pipeline_group = self.add_argument_group("section_fastq_screen")
-        pipeline_group.add_argument("--skip-fastq-screen", action="store_true",
+        pipeline_group.add_argument("--do-fastq-screen", action="store_true",
             default=False,
-            help="skip fastq_screen ")
+            help="do fastq_screen ")
         pipeline_group.add_argument("--fastq-screen-conf",
             default="fastq_screen.conf", type=str,
             help="""a valid fastqc_screen.conf file. See fastq_screen
@@ -252,10 +252,10 @@ def main(args=None):
         import sequana_pipelines.rnaseq
         shutil.copy(os.path.join(sequana_pipelines.rnaseq.__path__[0] ,
                 "fastq_screen.conf"), manager.workdir)
-        if options.skip_fastq_screen:
-            cfg.fastq_screen.do = False
-        else:
+        if options.do_fastq_screen:
             cfg.fastq_screen.do = True
+        else:
+            cfg.fastq_screen.do = False
 
         if os.path.exists(options.fastq_screen_conf):
             cfg.fastq_screen.config_file = os.path.abspath(options.fastq_screen_conf)
