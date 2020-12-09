@@ -93,7 +93,7 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
-0.9.21    * 9/12/2020
+0.10.0    * 9/12/2020
           * Fixed bug in sequana/star_indexing for small genomes (v0.9.7). 
             Changed the rnaseq requirements to benefit from this bug-fix that
             could lead to seg fault with star aligner for small genomes.
