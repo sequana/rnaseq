@@ -97,7 +97,7 @@ Version   Description
           * Fixed bug in sequana/star_indexing for small genomes (v0.9.7). 
             Changed the rnaseq requirements to benefit from this bug-fix that
             could lead to seg fault with star aligner for small genomes.
-          * fixed couple of typos in report
+          * Report improved with strand guess and plot
 0.9.20    * 7/12/2020
           * BUG in sequana/star rules v0.9.6. Fixed in this release.
           * In config file, bowtie section 'do' option is removed. This is now

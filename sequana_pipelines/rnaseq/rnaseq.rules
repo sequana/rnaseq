@@ -36,8 +36,11 @@ exec(open(sequana.modules["feature_counts_dynamic"], "r").read())
 
 __data__input = manager.getrawdata()
 
-rule pipeline:
-    input: "multiqc/multiqc_report.html", ".sequana/rulegraph.svg", "outputs/strand_summary.csv",
+
+
+__strand__summary = "outputs/strand_summary.csv"
+rule rnaseq:
+    input: "multiqc/multiqc_report.html", ".sequana/rulegraph.svg", __strand__summary,
 
 final_output = []
 
@@ -428,23 +431,22 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
             fc0= expand(__feature_counts_0__output_count, sample=manager.samples),
             fc1= expand(__feature_counts_1__output_count, sample=manager.samples),
             fc2= expand(__feature_counts_2__output_count, sample=manager.samples)
-        output: 
+        output:
             data=__guess_strandness__output,
-            summary="outputs/strand_summary.csv",
+            summary=__strand__summary
         run:
             # We compute all strandness
             import sequana.featurecounts as fc
             tolerance = config['feature_counts']['tolerance']
-            probable_strand, strand_df = fc.get_most_probable_strand_consensus(".", tolerance=tolerance)
+            mfc = fc.MultiFeatureCount(rnaseq_folder=".", tolerance=tolerance)
+            probable_strand, strand_df = mfc.get_most_probable_strand_consensus()
             strand_df.to_csv(output.summary)
             try:
-                import pylab
-                strand_df['strandness'].plot( kind='bar')
-                pylab.ylim([0,1])
-                pylab.ylabel("Strandness", fontsize=12)
-                pylab.savefig("outputs/strand_summary.png")
-            except Exception:
-                pass
+                mfc.plot_strandness(savefig=True, output_filename="outputs/strand_summary.png")
+            except Exception as err:
+                logger.warning("Could not create plot_strandness")
+                logger.warning("err")
+
             logger.info("strandness inference: {}".format(probable_strand))
             msg = "This is {probable_strand} data (check in the multiqc report)"
             if probable_strand in [0, 1, 2]:
@@ -682,22 +684,36 @@ gff.create_files_for_rnadiff("input", genetic_type="{}", ID="{}", fields={})
 
 
     # THE HTML REPORT is defined hereafter
+    #
+    from sequana_pipelines import rnaseq
     data = {"name": "rnaseq",
             "rulegraph": __rulegraph__output,
-            "stats": "stats.txt"}
+            "stats": "stats.txt",
+            "pipeline_version": rnaseq.version}
+
+
+    try:
+        import pandas as pd
+        df = pd.read_csv(__strand__summary)
+        guess = df['strand'].value_counts().idxmax()
+        names = {0: 'stranded', 1: 'unstranded', 2: 'reversely stranded'}
+        guess = names[guess]
+    except Exception as err:
+        logger.warning(err)
+        guess = "?"
+
     intro ="""
     <h2>Overview</h2>
     <p>
     The rnaseq pipeline maps the reads on the provided reference using {}. Features counts were
-    extracted for each sample using 3 options (stranded, unstranded, reversely stranded). The most
-    relevant option is available in ./features_counts directory and ready to use for differential gene analysis.
+    extracted for each sample using 3 options (stranded, unstranded, reversely stranded). The guessed (or user-based) strand ({}) is available in ./features_counts directory and ready to use for differential gene analysis.
     </p>
 
     <p>A <a href="multiqc/multiqc_report.html">multiqc report</a> is available, where various QC and mapping quality plots can be visualised.
     </p>
 
     <p>Here below is the strandness found for each samples. 
-    """.format(config["general"]['aligner'])
+    """.format(config["general"]['aligner'], guess)
 
     if "strandness" in config['feature_counts'] and config["feature_counts"]["strandness"]:
         choice = config["feature_counts"]["strandness"]

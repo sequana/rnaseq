@@ -6,8 +6,6 @@
 #
 #  File author(s):
 #      Thomas Cokelaer <thomas.cokelaer@pasteur.fr>
-#      Rachel Legendre <rachel.legendre@pasteur.fr>
-#      Etienne Kornobis <etienne.kornobis@pasteur.fr>
 #
 #  Distributed under the terms of the 3-clause BSD license.
 #  The full license is in the LICENSE file, distributed with this software.
@@ -16,9 +14,6 @@
 #  documentation: http://sequana.readthedocs.io
 #
 ##############################################################################
-
-
-
 import sys
 import os
 import argparse
@@ -106,7 +101,6 @@ feature type, -g by a valid attribute name. Do not use -s option, use the
 
         self.add_argument("--run", default=False, action="store_true",
             help="execute the pipeline directly")
-
 
         pipeline_group = self.add_argument_group("pipeline_others")
         pipeline_group.add_argument('--do-igvtools', action="store_true")
