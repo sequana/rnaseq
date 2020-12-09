@@ -697,7 +697,7 @@ gff.create_files_for_rnadiff("input", genetic_type="{}", ID="{}", fields={})
     </p>
 
     <p>Here below is the strandness found for each samples. 
-    """
+    """.format(config["general"]['aligner'])
 
     if "strandness" in config['feature_counts'] and config["feature_counts"]["strandness"]:
         choice = config["feature_counts"]["strandness"]
@@ -715,7 +715,7 @@ gff.create_files_for_rnadiff("input", genetic_type="{}", ID="{}", fields={})
     Differential gene expression analysis is not performed automatically with this pipeline. However, information, feature counts, and other materials can be found in the directory ./randiff. Most probably an analysis is present. If so, please open the report <a href="rnadiff/rnadiff.html">rnadiff</a>.
     </p>
 
-    """.format(config["general"]['aligner'])
+    """
     s = SummaryModule2(data, intro)
 
     shell("chmod -R g+w .")

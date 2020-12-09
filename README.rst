@@ -66,6 +66,16 @@ Details
 This pipeline runs **rnaseq** in parallel on the input fastq files (paired or not). 
 A brief sequana summary report is also produced.
 
+This pipeline is complex and requires some expertise for the interpretation.
+
+Yet, it should be quite straigtforward to execute it as shown above. The
+pipeline uses bowtie1 to look for rRNA. Then, it clean the data with cutapdat.
+If no adapters are provided (default), reads are trimmed for low quality bases.
+Then, mapping is performed with star or bowtie2 (--aligner option). Finally,
+feature counts are extracted from the previously generated BAM files. We guess
+the strand and save the feature counts into the directoy
+./rnadiff/feature_counts. DGE is not part of the pipeline. To do so, we use a
+wrapper of deseq2, which will be provided later.
 
 Rules and configuration details
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -83,6 +93,11 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.9.21    * 9/12/2020
+          * Fixed bug in sequana/star_indexing for small genomes (v0.9.7). 
+            Changed the rnaseq requirements to benefit from this bug-fix that
+            could lead to seg fault with star aligner for small genomes.
+          * fixed couple of typos in report
 0.9.20    * 7/12/2020
           * BUG in sequana/star rules v0.9.6. Fixed in this release.
           * In config file, bowtie section 'do' option is removed. This is now
