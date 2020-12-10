@@ -8,12 +8,12 @@ workspace <- "."                                     # workspace for the R sessi
 projectName <- "BXXXX"                               # name of the project (cannot contain any ".")
 analysisVersion <- "vN"                              # name of the analysis version (cannot contain any ".")
 
-author <- "FILLME (Biomics platform - Institut Pasteur)"   # author of the statistical report
-researcher <- "FILLME"                               #  name of the researcher
+author <- " (Biomics platform - Institut Pasteur)"   # author of the statistical report
+researcher <- ""                               #  name of the researcher
 chief <- ""                                          # name of the head of unit
 
-varInt <- "group"                               # factor of interest
-condRef <- "condRef"                                 # reference biological condition e.g. WT
+varInt <- "condition"                               # factor of interest
+condRef <- "WT"                                 # reference biological condition e.g. WT
 batch <- NULL                                        # factor on which to adjust the statistical model: NULL (default) or "batch" for example
 
 outfile <- TRUE                                      # TRUE to export figures, FALSE to display them in R
@@ -199,8 +199,9 @@ MAplotDE(complete=complete, pvalCutoff=alpha, out=outfile, versionName=versionNa
 cat("\nFigure : volcano-plot\n")
 volcanoPlotDE(complete=complete, pvalCutoff=alpha, out=outfile, versionName=versionName)
 
-cat("\nFigure : Venn diagram\n")
-vennDiagramDE(complete=complete, alpha=alpha, out=outfile, versionName=versionName)
+# this causes trouble quite often
+#cat("\nFigure : Venn diagram\n")
+#vennDiagramDE(complete=complete, alpha=alpha, out=outfile, versionName=versionName)
 
 cat("\nFigure : heatmap\n")
 heatmapDE(counts.trans=counts.trans, complete=complete, alpha=alpha, out=outfile, 
