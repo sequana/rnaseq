@@ -109,10 +109,12 @@ sp:
         contents: 'Trimmomatic'
     cutadapt:
         fn: 'cutadapt.txt'
-    rna_seqc/metrics:
-        fn: "*metrics.tsv"
-    rna_seqc/coverage:
-        fn: "*coverage.tsv"
+    # with newer version of rna_seqc, no need for those custom patterns, which
+    # fail
+    #rna_seqc/metrics:
+    #    fn: "*metrics.tsv"
+    #rna_seqc/coverage:
+    #    fn: "*coverage.tsv"
 
 # Overwrite the defaults of which table columns are visible by default
 table_columns_visible:
