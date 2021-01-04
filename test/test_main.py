@@ -24,7 +24,7 @@ def test_standalone_script():
     import sequana_pipelines.rnaseq.main as m
     sys.argv = ["test", "--input-directory", sharedir, "--genome-directory",
         saccer3, "--force", "--aligner", "bowtie2", "--rnadiff-mode",
-"one_factor",
+"one_factor", "--feature-counts-feature-type", 'gene,tRNA',
         "--rRNA-feature", "rRNA_gene"]   # ideally should be rRNA but current
     m.main()
 

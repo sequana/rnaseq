@@ -105,6 +105,7 @@ Version   Description
           * can provide a custom GFF not in the genome directory
           * can provide several feature from the GFF. Then, a custom GFF is
             created and used
+          * fix the --do-igvtools and --do-bam-coverage with better doc
 0.10.0    * 9/12/2020
           * Fixed bug in sequana/star_indexing for small genomes (v0.9.7). 
             Changed the rnaseq requirements to benefit from this bug-fix that

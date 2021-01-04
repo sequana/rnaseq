@@ -97,15 +97,21 @@ default sequana_rnaseq conf is used (phiX174 only)""")
             help="execute the pipeline directly")
 
         pipeline_group = self.add_argument_group("pipeline_others")
-        pipeline_group.add_argument('--do-igvtools', action="store_true")
-        pipeline_group.add_argument('--do-bam-coverage', action="store_true")
-        pipeline_group.add_argument('--do-mark-duplicates', action="store_true")
+        pipeline_group.add_argument('--do-igvtools', action="store_true", 
+            help="""if set, this will compute TDF files that can be imported in
+IGV browser. TDF file allows to quickly visualise the coverage of the mapped
+reads.""")
+        pipeline_group.add_argument('--do-bam-coverage', action="store_true", 
+            help="Similar to --do-igvtools using bigwig")
+        pipeline_group.add_argument('--do-mark-duplicates', action="store_true", 
+            help="""Mark duplicates. To be used e.g. with QCs""")
 
         pipeline_group = self.add_argument_group("pipeline_RNAseQC")
         pipeline_group.add_argument('--do-rnaseqc', action="store_true",
             help="do RNA-seq QC using RNAseQC v2")
         pipeline_group.add_argument('--rnaseqc-gtf-file',
-            help="The GTF file to be used")
+            help="""The GTF file to be used for RNAseQC. Without a valid GTF,
+            RNAseqQC will not work. Again, yu may try sequana.gff3 module to build the gtf""")
 
         # RNADIFF
         pipeline_group = self.add_argument_group("section_rnadiff")

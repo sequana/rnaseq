@@ -42,7 +42,6 @@ __strand__summary = "outputs/strand_summary.csv"
 rule rnaseq:
     input: "multiqc/multiqc_report.html", ".sequana/rulegraph.svg", __strand__summary,
 
-final_output = []
 
 # Make sure it is absolute
 genome_directory = os.path.abspath(config["general"]["genome_directory"])
@@ -70,7 +69,7 @@ __create_sequence_dictionary__reference = __fasta_file__
 __create_sequence_dictionary__output =    __fasta_file__ + ".dict"
 __create_sequence_dictionary__log =       "logs/indexing/create_sequence_dictionary.log"
 include: sm.modules["create_sequence_dictionary"]
-final_output.extend([__create_sequence_dictionary__output])
+expected_output.extend([__create_sequence_dictionary__output])
 
 
 do_indexing = manager.config.general.indexing
@@ -371,25 +370,26 @@ elif manager.config.general.aligner == "salmon":
     __mapping_output = None
 
 # generating bigwig files
-if manager.config.coverage.do is True and manager.aligner not in ['salmon']:
+if manager.config.coverage.do is True and config['general']['aligner'] not in ['salmon']:
     __bamCoverage__input = __mapping_output
     __bamCoverage__log = manager.getname("bamCoverage", ".logs")
     __bamCoverage__output = manager.getname("bamCoverage", ".norm.bw")
     include: sm.modules["bamCoverage"]
-    final_output.extend(expand(__bamCoverage__output, sample=manager.samples))
+    expected_output.extend(expand(__bamCoverage__output, sample=manager.samples))
 
 
-if manager.config.igvtools.do and manager.aligner not in ['salmon']:
+if manager.config.igvtools.do and config['general']['aligner'] not in ['salmon']:
     # if nothing provided, it must be an empty string
     if manager.config.igvtools.chrom_sizes_file.strip():
         pass
     else:
       config["igvtools"]["chrom_sizes_file"] = __fasta_file__
+
     __igvtools__input = __mapping_output
     __igvtools__output = manager.getname("igvtools", ".tdf")
     __igvtools__log = manager.getname("igvtools", ".logs")
     include: sm.modules["igvtools"]
-    final_output.extend(expand(__igvtools__output, sample=manager.samples))
+    expected_output.extend(expand(__igvtools__output, sample=manager.samples))
 
 
 # Feature counts from subread suite
@@ -603,7 +603,7 @@ else :
 __multiqc__output_dir = config['multiqc']['output_directory']
 
 include: sm.modules["multiqc"]
-final_output.extend([__multiqc__output])
+#final_output.extend([__multiqc__output])
 
 
 # Include rule graph for each sample
@@ -616,7 +616,7 @@ include: sm.modules['rulegraph']
 # Add Conda
 __conda__output = "requirements.txt"
 include: sm.modules['conda']   # Create requirements.txt(dependencies)
-final_output.extend([__conda__output])
+#final_output.extend([__conda__output])
 
 
 # Those rules takes a couple of seconds so no need for a cluster
