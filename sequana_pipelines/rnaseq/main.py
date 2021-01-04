@@ -88,24 +88,18 @@ path includes the path to the genome + its prefix name. If you have your
 own fastq-screen DB and configuration file, use this option. Otherwise, the 
 default sequana_rnaseq conf is used (phiX174 only)""")
 
-        pipeline_group = self.add_argument_group("section_feature_counts")
-        pipeline_group.add_argument("--feature-counts-strandness",
-            default=None, 
-            help="""0 for unstranded, 1 for stranded and 2 for reversely
-stranded. If you do not know, let the pipeline guess for you.""")
-        pipeline_group.add_argument("--feature-counts-options",
-            default="-t gene -g ID",
-            help="""options for feature counts. -t should be followed by a valid
-feature type, -g by a valid attribute name. Do not use -s option, use the
---feature-counts-strandness parameter instead.""")
+        # feature counts related
+        so = FeatureCountsOptions()
+        so.add_options(self)
 
+        # others
         self.add_argument("--run", default=False, action="store_true",
             help="execute the pipeline directly")
 
         pipeline_group = self.add_argument_group("pipeline_others")
         pipeline_group.add_argument('--do-igvtools', action="store_true")
         pipeline_group.add_argument('--do-bam-coverage', action="store_true")
-        pipeline_group.add_argument('--skip-mark-duplicates', action="store_true")
+        pipeline_group.add_argument('--do-mark-duplicates', action="store_true")
 
         pipeline_group = self.add_argument_group("pipeline_RNAseQC")
         pipeline_group.add_argument('--do-rnaseqc', action="store_true",
@@ -226,13 +220,16 @@ def main(args=None):
         # ----------------------------------------------------- feature counts
         cfg.feature_counts.options = options.feature_counts_options
         cfg.feature_counts.strandness = options.feature_counts_strandness
+        cfg.feature_counts.attribute = options.feature_counts_attribute
+        cfg.feature_counts.feature = options.feature_counts_feature_type
+        cfg.feature_counts.extra_attributes = options.feature_counts_extra_attributes
 
         # ------------------------------------------------------ optional
         cfg.igvtools.do = options.do_igvtools
         cfg.coverage.do = options.do_bam_coverage
-        cfg.mark_duplicates.do = True
-        if options.skip_mark_duplicates:
-            cfg.mark_duplicates.do = False
+        cfg.mark_duplicates.do = False
+        if options.do_mark_duplicates:
+            cfg.mark_duplicates.do = True
 
         # -------------------------------------------------------- RNAseqQC
         cfg.rnaseqc.do = options.do_rnaseqc
@@ -255,7 +252,7 @@ def main(args=None):
             cfg.fastq_screen.config_file = os.path.abspath(options.fastq_screen_conf)
             # copy the fastq_screen.conf input or default file
             shutil.copy(options.fastq_screen_conf, manager.workdir)
-            
+
 
         # SANITY CHECKS
         # -------------------------------------- do we find rRNA feature in the GFF ?
@@ -267,8 +264,10 @@ def main(args=None):
         prefix_name = genome_directory + "/" + genome_name
         gff_file = prefix_name + ".gff"
         gff = GFF3(gff_file)
+        df_gff = gff.get_df()
         valid_types = gff.get_types()
 
+        # first check the rRNA feature
         if cfg['general']["rRNA_feature"] and \
             cfg['general']["rRNA_feature"] not in valid_types:
 
@@ -278,22 +277,51 @@ def main(args=None):
                 " of your GFF. Valid features are: {}".format(valid_types))
             sys.exit()
 
-        valid_types = gff.get_types()
-        fc_options = cfg["feature_counts"]["options"]
-        index = fc_options.split().index('-t')
-        fc_type = fc_options.split()[index+1]
 
+        # then, check the main feature
+        fc_type = cfg.feature_counts.feature
+        fc_attr = cfg.feature_counts.attribute
 
         logger.info("checking your input GFF file and feature counts options")
-        if fc_type not in valid_types:
-            logger.error("Invalid type ({}) in feature_count section of config.yaml (options {}). Valid types found in your GFF file are: {}".format(fc_type, fc_options, valid_types))
+        # if only one feature (99% of the projet)
+        if "," not in fc_type:
+            fc_types = [fc_type]
+        else:
+            logger.info("Building a custom GFF file (custom.gff) using Sequana. Please wait")
+            fc_types = fc_type.split(',')
+            gff.save_gff_filtered(features=fc_types, filename='custom.gff')
+            cfg.general.custom_gff = 'custom.gff'
 
-            sys.exit()
+        for fc_type in fc_types:
+            S = sum(df_gff['type'] == fc_type)
+            if S == 0:
+                logger.error("Found 0 entries for feature '{}'. Please choose a valid feature from: {}".format(fc_type, valid_types))
+                sys.exit()
+            else:
+                logger.info("Found {} {} entries".format(S, fc_type))
+
+            # now we check the attributs:
+            dd = df_gff.query("type==@fc_type")
+            attributes = [y for x in dd.attributes for y in x.keys()]
+            S = attributes.count(fc_attr)
+            if S == 0:
+                logger.error("Found 0 entries for attribute '{}'. Please choose a valid attribute from: {}".format(fc_attr, set(attributes)))
+                sys.exit()
+            else:
+                unique = set([x[fc_attr] for k,x in dd.attributes.items() if fc_attr in x])
+                logger.info("Found {} {} entries for attribute '{}' [{} unique entries]".format(S,
+fc_attr, fc_type, len(unique)))
+
+            if S != len(unique):
+                logger.warning("Attribute non-unique. Feature counts should handle it")
 
 
     # finalise the command and save it; copy the snakemake. update the config
     # file and save it.
     manager.teardown()
+    # need to move the custom file into the working directoty
+    if cfg.general.custom_gff:
+        shutil.copy(cfg.general.custom_gff, options.workdir)
 
 
     if options.run:

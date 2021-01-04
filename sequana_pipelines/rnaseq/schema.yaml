@@ -41,6 +41,8 @@ mapping:
                 type: bool
             "force_indexing":
                 type: bool
+            "custom_gff":
+                type: str
 
     "requirements":
         type: str
@@ -114,6 +116,12 @@ mapping:
             "do":
                 type: bool
             "options":
+                type: str
+            "attribute":
+                type: str
+            "feature":
+                type: str
+            "extra_attributes":
                 type: str
             "strandness":
                 required: False

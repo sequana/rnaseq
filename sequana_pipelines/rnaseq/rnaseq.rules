@@ -52,6 +52,12 @@ __prefix_name__ = genome_directory + "/" + genome_name
 __fasta_file__ = __prefix_name__ + ".fa"
 __gff_file__   = __prefix_name__ + ".gff"
 
+
+# do we have several feature, if so, we need to build a custom GFF file
+if config['general']['custom_gff']:
+    __gff_file__   = config['general']['custom_gff']
+assert os.path.exists(__gff_file__)
+
 # check existence of fasta and gff before starting;
 for this in [__fasta_file__, __gff_file__]:
     if os.path.exists(this) is False:
@@ -402,9 +408,25 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
     # everything with the 3 different options of strandness.
     # We will copy one of them based on our criteria, but all 3 will be
     # available
+
+    feature_type = config['feature_counts']['feature']
+    if "," in feature_type: # assume this is a custom GFF file
+        feature_type = "custom"
+
+    fc_options = " -t {} -g {} ".format(
+        feature_type,
+        config['feature_counts']['attribute'])
+
+    if config['feature_counts']['extra_attributes']:
+        fc_options += " --extraAttributes {} ".format(config['feature_counts']['extra_attributes'])
+
+    # We finally add other options that may overwrite previous options ! as
+    # described in the rnaseq pipeline documentation. 
+    fc_options += " {} ".format(config['feature_counts']['options'])
+
     __feature_counts_0__output_count = manager.getname("feature_counts_0", "_feature.out")
     __feature_counts__gff = __gff_file__
-    __feature_counts__options = config['feature_counts']["options"] + " -s 0 "
+    __feature_counts__options = fc_options + " -s 0 "
     if manager.paired:
         __feature_counts__options += " -p "
     __feature_counts_0__log = manager.getname("feature_counts_0", ".logs")
@@ -413,14 +435,14 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
 
     __feature_counts_1__output_count = manager.getname("feature_counts_1", "_feature.out")
     __feature_counts_1__log = manager.getname("feature_counts_1", ".logs")
-    __feature_counts__options = config['feature_counts']["options"] + " -s 1"
+    __feature_counts__options = fc_options + " -s 1"
     if manager.paired:
         __feature_counts__options +=  " -p "
     include: feature_counts_dynamic("1", manager)
 
     __feature_counts_2__output_count = manager.getname("feature_counts_2", "_feature.out")
     __feature_counts_2__log = manager.getname("feature_counts_2", ".logs")
-    __feature_counts__options = config['feature_counts']["options"] + " -s 2"
+    __feature_counts__options = fc_options + " -s 2"
     if manager.paired:
         __feature_counts__options +=  " -p "
     include: feature_counts_dynamic("2", manager)
@@ -633,10 +655,8 @@ onsuccess:
     # annotation e.g. exon, gene the -g option specify the attributes to be 
     # found in the GFF. e.g. ID, locus_id, etc 
     gff = GFF3(__gff_file__)
-    index = config['feature_counts']['options'].split().index("-t")
-    genetic_type = config['feature_counts']['options'].split()[index+1]
-    index = config['feature_counts']['options'].split().index("-g")
-    attribute = config['feature_counts']['options'].split()[index+1]
+    genetic_type = feature_type  # do not use config['feature_counts'] to take into account the custom case
+    attribute = config['feature_counts']['attribute']
     gff.create_files_for_rnadiff("rnadiff/input", genetic_type=genetic_type, 
         ID=attribute, fields=[attribute])
     script = """
@@ -706,13 +726,13 @@ gff.create_files_for_rnadiff("input", genetic_type="{}", ID="{}", fields={})
     <h2>Overview</h2>
     <p>
     The rnaseq pipeline maps the reads on the provided reference using {}. Features counts were
-    extracted for each sample using 3 options (stranded, unstranded, reversely stranded). The guessed (or user-based) strand ({}) is available in ./features_counts directory and ready to use for differential gene analysis.
+    extracted and are available in <a href="./rnadiff/feature_counts">feature counts</a> directory; ready to use for differential gene analysis. 
     </p>
 
     <p>A <a href="multiqc/multiqc_report.html">multiqc report</a> is available, where various QC and mapping quality plots can be visualised.
     </p>
 
-    <p>Here below is the strandness found for each samples. 
+    <p>Here below is a QC plot related to the strandness found for each samples. The red dotted lines indicate a tolerance. The 0.5 vertical line correspond to an <b>unstranded</b> case. A value close to 0 indicates a <b>reversely stranded</b> case, and a value close to 1 indicates a <b>stranded</b> case.
     """.format(config["general"]['aligner'], guess)
 
     if "strandness" in config['feature_counts'] and config["feature_counts"]["strandness"]:
@@ -725,6 +745,21 @@ gff.create_files_for_rnadiff("input", genetic_type="{}", ID="{}", fields={})
                  style="width:80%; height:40%")
     intro+=image
     #else:
+
+
+    try:
+        df = pd.read_csv("multiqc/multiqc_data/multiqc_bowtie1.txt", sep='\t')
+        rRNA = df.reads_aligned_percentage.mean()
+        if rRNA < 10:   
+            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is reasonable</p>"
+        elif rRNA < 20:
+            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is moderately low</p>"
+        elif rRNA > 20:
+            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is relatively high</p>"
+        elif rRNA > 50:
+            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is very high high</p>"
+    except:
+        pass
 
     intro+=    """
     <p>

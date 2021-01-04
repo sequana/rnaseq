@@ -37,7 +37,7 @@ general:
     rRNA_feature: rRNA
     indexing: false
     force_indexing: false
-
+    custom_gff:
 
 
 ######################
@@ -235,10 +235,13 @@ salmon_mapping:
 #
 feature_counts:
     do: true
-    options: -t gene -g ID    ## if exon/CDS is used, put -O option
-    strandness:  # set to 0, 1, 2 to force te type of strandness
-    threads: 1
-    tolerance: 0.15
+    options:         ## if exon/CDS is used, put -O option
+    strandness:      # set to 0, 1, 2 to force te type of strandness
+    threads: 1       # 
+    tolerance: 0.15  # use to figure out the strandness. no need to change
+    feature: gene    # could be exon, mRNA, etc
+    attribute: ID    # could be ID, gene_id, etc
+    extra_attributes: # by default, stores only the main attribute, but could add more
 
 #############################################################################
 # bamCoverage write file in bigwig format from BAM files.

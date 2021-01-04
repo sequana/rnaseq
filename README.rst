@@ -93,6 +93,18 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.11.0    * rnadiff one factor is simplified
+          * When initiating the pipeline, provide information about the GFF
+          * mark duplicates off by default
+          * feature_counts has more options in the help. split options into
+            feature/attribute/extra_attributes.
+          * HTML reports better strand picture and information about rRNA
+          * refactorising the main standalone and config file to split feature
+            counts optiions into feature and attribute. Sanoty checks are ow
+            provided (--feature-counts-attribute, --feature-counts-feature-type)
+          * can provide a custom GFF not in the genome directory
+          * can provide several feature from the GFF. Then, a custom GFF is
+            created and used
 0.10.0    * 9/12/2020
           * Fixed bug in sequana/star_indexing for small genomes (v0.9.7). 
             Changed the rnaseq requirements to benefit from this bug-fix that
