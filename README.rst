@@ -93,6 +93,7 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.12.0    * BUG fix: Switch mark_duplicates correctly beore feature counts
 0.11.0    * rnadiff one factor is simplified
           * When initiating the pipeline, provide information about the GFF
           * mark duplicates off by default

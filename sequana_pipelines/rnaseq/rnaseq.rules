@@ -369,9 +369,40 @@ elif manager.config.general.aligner == "salmon":
     # There is no BAM created 
     __mapping_output = None
 
+# The input is the output of the mapping 
+# Add Read group on BAM files
+if manager.config.general.aligner not in ['salmon']:
+    __add_read_group__input = __mapping_output
+    __add_read_group__output = manager.getname("add_read_group", ".bam")
+    __add_read_group__log_err = "%s/logs/AddOrReplaceReadGroups/stderr.logs" % manager.sample
+    __add_read_group__log_std ="%s/logs/AddOrReplaceReadGroups/stdout.logs" % manager.sample
+    __add_read_group__rg = "ID=%s LB=%s PL=%s PU=%s SM=%s" % (
+        manager.sample, manager.sample, manager.config.sequencing.platform,
+        manager.config.sequencing.flowcell, manager.sample)
+    include: sm.modules["add_read_group"]
+
+
+# we always add read group so input is the read group output
+# output is stored in __final_bam__
+# duplicates can be from PCR or if SR, by pure chance.
+# if Paired, most likely a PCR origin.
+# Mark duplicates
+if config["mark_duplicates"]["do"] and manager.config.general.aligner not in ['salmon']:
+    __mark_duplicates_ref__input   = __add_read_group__output
+    __mark_duplicates_ref__output  = manager.getname("mark_duplicates", ".bam")
+    __mark_duplicates_ref__metrics = manager.getname("mark_duplicates", ".metrics")
+    __mark_duplicates_ref__log_std = "%s/logs/mark_duplicates/stdout.logs" % manager.sample
+    __mark_duplicates_ref__log_err = "%s/logs/mark_duplicates/stderr.logs" % manager.sample
+    include: mark_duplicates_dynamic("ref", manager)
+    expected_output.extend(expand(__mark_duplicates_ref__output, sample=manager.samples))
+    __final_bam__ = __mark_duplicates_ref__output
+else:
+    __final_bam__ = __add_read_group__output
+
+
 # generating bigwig files
 if manager.config.coverage.do is True and config['general']['aligner'] not in ['salmon']:
-    __bamCoverage__input = __mapping_output
+    __bamCoverage__input = __final_bam__
     __bamCoverage__log = manager.getname("bamCoverage", ".logs")
     __bamCoverage__output = manager.getname("bamCoverage", ".norm.bw")
     include: sm.modules["bamCoverage"]
@@ -385,7 +416,7 @@ if manager.config.igvtools.do and config['general']['aligner'] not in ['salmon']
     else:
       config["igvtools"]["chrom_sizes_file"] = __fasta_file__
 
-    __igvtools__input = __mapping_output
+    __igvtools__input = __final_bam__
     __igvtools__output = manager.getname("igvtools", ".tdf")
     __igvtools__log = manager.getname("igvtools", ".logs")
     include: sm.modules["igvtools"]
@@ -395,10 +426,8 @@ if manager.config.igvtools.do and config['general']['aligner'] not in ['salmon']
 # Feature counts from subread suite
 if manager.config.general.aligner == "salmon":
     __feature_counts__input = __salmon_mapping__output_counts
-if manager.config.general.aligner == "star":
-    __feature_counts__input = __star_mapping__sort
 else :
-    __feature_counts__input = __mapping_output
+    __feature_counts__input = __final_bam__
 
 fc_outdir = "rnadiff/feature_counts/"
 
@@ -525,38 +554,10 @@ elif manager.config.feature_counts.do and manager.config.general.aligner in ['sa
     expected_output += expand(__salmon_to_features__output, sample=manager.samples)
 
 
-# Add Read group on BAM files
-if manager.config.general.aligner not in ['salmon']:
-    __add_read_group__input = __mapping_output
-    __add_read_group__output = manager.getname("add_read_group", ".bam")
-    __add_read_group__log_err = "%s/logs/AddOrReplaceReadGroups/stderr.logs" % manager.sample
-    __add_read_group__log_std ="%s/logs/AddOrReplaceReadGroups/stdout.logs" % manager.sample
-    __add_read_group__rg = "ID=%s LB=%s PL=%s PU=%s SM=%s" % (
-        manager.sample, manager.sample, manager.config.sequencing.platform,
-        manager.config.sequencing.flowcell, manager.sample)
-    include: sm.modules["add_read_group"]
-
-
-# duplicates can be from PCR or if SR, by pure chance.
-# if Paired, most likely a PCR origin.
-# Mark duplicates
-if config["mark_duplicates"]["do"] and manager.config.general.aligner not in ['salmon']:
-    __mark_duplicates_ref__input = __add_read_group__output
-    __mark_duplicates_ref__output = manager.getname("mark_duplicates", ".bam")
-    __mark_duplicates_ref__metrics = manager.getname("mark_duplicates", ".metrics")
-    __mark_duplicates_ref__log_std = "%s/logs/mark_duplicates/stdout.logs" % manager.sample
-    __mark_duplicates_ref__log_err =  "%s/logs/mark_duplicates/stderr.logs" % manager.sample
-    include: mark_duplicates_dynamic("ref", manager)
-    expected_output.extend(expand(__mark_duplicates_ref__output, sample=manager.samples))
-
 
 # FIXME do we need the mark_duplicates for RNASEQC2 ? is it compulsary ?
 if config["rnaseqc"]["do"]:
-    if config["mark_duplicates"]['do']:
-        __reorderSam__input_sam = __mark_duplicates_ref__output
-    else:
-        __reorderSam__input_sam = __add_read_group__output
-
+    __reorderSam__input_sam = __final_bam__
     __reorderSam__input_genome = __fasta_file__
     __reorderSam__logs = manager.getname("reorderSam", ".logs")
     __reorderSam__output = manager.getname("reorderSam", "_reorder.bam")

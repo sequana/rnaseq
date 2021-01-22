@@ -306,7 +306,7 @@ def main(args=None):
             else:
                 logger.info("Found {} {} entries".format(S, fc_type))
 
-            # now we check the attributs:
+            # now we check the attribute:
             dd = df_gff.query("type==@fc_type")
             attributes = [y for x in dd.attributes for y in x.keys()]
             S = attributes.count(fc_attr)
@@ -320,6 +320,13 @@ fc_attr, fc_type, len(unique)))
 
             if S != len(unique):
                 logger.warning("Attribute non-unique. Feature counts should handle it")
+
+            if options.feature_counts_extra_attributes:
+                for extra_attr in cfg.feature_counts.extra_attributes.split(","):
+                    if extra_attr not in set(attributes):
+                        logger.error("{} not found in the GFF attributes. Try one of {}".format(extra_attr, set(attributes)))
+                        sys.exit()
+            
 
 
     # finalise the command and save it; copy the snakemake. update the config
