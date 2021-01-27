@@ -59,7 +59,8 @@ class Options(argparse.ArgumentParser):
         pipeline_group.add_argument("--force-indexing", action="store_true",
             default=False,
             help="""If indexing files exists already, but you wish to
-                create them again, use this option""")
+                create them again, use this option. Note that you will need
+                permissions for that""")
         pipeline_group.add_argument("--rRNA-feature",
             default="rRNA",
             help="""Feature name corresponding to the rRNA to be identified in
@@ -204,7 +205,6 @@ def main(args=None):
                 logger.info("Indexing not found for {}. Planned to be run".format("salmon"))
                 cfg.general.indexing = True
 
-        cfg.general.indexing = True
         #options.do_indexing
         cfg.general.force_indexing = options.force_indexing
         cfg.general.rRNA_feature = options.rRNA_feature
@@ -333,8 +333,11 @@ fc_attr, fc_type, len(unique)))
     # file and save it.
     manager.teardown()
     # need to move the custom file into the working directoty
-    if cfg.general.custom_gff:
-        shutil.copy(cfg.general.custom_gff, options.workdir)
+    try: # option added in latest version
+        if cfg.general.custom_gff:
+            shutil.copy(cfg.general.custom_gff, options.workdir)
+    except:
+        pass
 
 
     if options.run:
