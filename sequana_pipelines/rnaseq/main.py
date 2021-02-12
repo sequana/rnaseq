@@ -67,8 +67,8 @@ class Options(argparse.ArgumentParser):
 the input GFF/GTF files""")
         pipeline_group.add_argument("--contaminant-file",
             default=None,
-            help="""A fasta file. If used, the rRNA-feature cannot be used. 
-This option is useful if you have a dedicated list of rRNA feature or a dedicatd 
+            help="""A fasta file. If used, the rRNA-feature is not used 
+This option is useful if you have a dedicated list of rRNA feature or a dedicated 
 fasta file to search for contaminants""")
 
         # cutadapt related
@@ -80,6 +80,14 @@ fasta file to search for contaminants""")
         pipeline_group.add_argument("--do-fastq-screen", action="store_true",
             default=False,
             help="do fastq_screen ")
+        pipeline_group.add_argument("--skip-gff-check", action="store_true",
+            default=False,
+            help="""By default we check the coherence between the input
+GFF file and related options (e.g. --feature_counts_feature_type and 
+--feature_counts_attribute options). This may take time e.g. for mouse or human.
+Using this option skips the sanity checks""")
+
+
         pipeline_group.add_argument("--fastq-screen-conf",
             default="fastq_screen.conf", type=str,
             help="""a valid fastqc_screen.conf file. See fastq_screen
@@ -157,7 +165,7 @@ def main(args=None):
     # create the beginning of the command and the working directory
     manager.setup()
     from sequana import logger
-    logger.level = options.level
+    logger.setLevel(options.level)
 
     # fill the config file with input parameters
     if options.from_project is None:
@@ -211,7 +219,7 @@ def main(args=None):
         cfg.general.contaminant_file = options.contaminant_file
 
         if options.rRNA_feature and options.contaminant_file:
-            logger.error("--rRNA-feature and --contaminant-file are mutually exclusive")
+            logger.warning("You are using --contaminant_file so --rRNA-feature will be ignored (we search for contaminant in the input file; not rRNA in the gff file")
             sys.exit(1)
 
         # --------------------------------------------------------- cutadapt
@@ -262,70 +270,73 @@ def main(args=None):
 
         # SANITY CHECKS
         # -------------------------------------- do we find rRNA feature in the GFF ?
-        logger.info("checking your input GFF file and rRNA feature if provided")
+        # if we do not build a custom feature_counts set of options, no need to
+        # check carfully the GFF; if users knows what he is doing; no need to
+        # check the GFF either
+        if options.skip_gff_check is False and "," not in cfg.feature_counts.feature:
+            logger.info("checking your input GFF file and rRNA feature if provided")
 
-        from sequana.gff3 import GFF3
-        genome_directory = os.path.abspath(cfg["general"]["genome_directory"])
-        genome_name = genome_directory.rsplit("/", 1)[1]
-        prefix_name = genome_directory + "/" + genome_name
-        gff_file = prefix_name + ".gff"
-        gff = GFF3(gff_file)
-        df_gff = gff.get_df()
-        valid_types = gff.get_types()
+            from sequana.gff3 import GFF3
+            genome_directory = os.path.abspath(cfg["general"]["genome_directory"])
+            genome_name = genome_directory.rsplit("/", 1)[1]
+            prefix_name = genome_directory + "/" + genome_name
+            gff_file = prefix_name + ".gff"
+            gff = GFF3(gff_file)
+            df_gff = gff.get_df()
+            valid_types = gff.get_types()
 
-        # first check the rRNA feature
-        if cfg['general']["rRNA_feature"] and \
-            cfg['general']["rRNA_feature"] not in valid_types:
+            # first check the rRNA feature
+            if cfg['general']["rRNA_feature"] and \
+                cfg['general']["rRNA_feature"] not in valid_types:
 
-            logger.error("rRNA feature not found in the input GFF ({})".format(gff_file) +
-                " This is probably an error. Please check the GFF content and /or"
-                " change the feature name with --rRNA-feature based on the content"
-                " of your GFF. Valid features are: {}".format(valid_types))
-            sys.exit()
-
-
-        # then, check the main feature
-        fc_type = cfg.feature_counts.feature
-        fc_attr = cfg.feature_counts.attribute
-
-        logger.info("checking your input GFF file and feature counts options")
-        # if only one feature (99% of the projet)
-        if "," not in fc_type:
-            fc_types = [fc_type]
-        else:
-            logger.info("Building a custom GFF file (custom.gff) using Sequana. Please wait")
-            fc_types = fc_type.split(',')
-            gff.save_gff_filtered(features=fc_types, filename='custom.gff')
-            cfg.general.custom_gff = 'custom.gff'
-
-        for fc_type in fc_types:
-            S = sum(df_gff['type'] == fc_type)
-            if S == 0:
-                logger.error("Found 0 entries for feature '{}'. Please choose a valid feature from: {}".format(fc_type, valid_types))
+                logger.error("rRNA feature not found in the input GFF ({})".format(gff_file) +
+                    " This is probably an error. Please check the GFF content and /or"
+                    " change the feature name with --rRNA-feature based on the content"
+                    " of your GFF. Valid features are: {}".format(valid_types))
                 sys.exit()
-            else:
-                logger.info("Found {} {} entries".format(S, fc_type))
 
-            # now we check the attribute:
-            dd = df_gff.query("type==@fc_type")
-            attributes = [y for x in dd.attributes for y in x.keys()]
-            S = attributes.count(fc_attr)
-            if S == 0:
-                logger.error("Found 0 entries for attribute '{}'. Please choose a valid attribute from: {}".format(fc_attr, set(attributes)))
-                sys.exit()
+            # then, check the main feature
+            fc_type = cfg.feature_counts.feature
+            fc_attr = cfg.feature_counts.attribute
+
+            logger.info("checking your input GFF file and feature counts options")
+            # if only one feature (99% of the projet)
+            if "," not in fc_type:
+                fc_types = [fc_type]
             else:
-                unique = set([x[fc_attr] for k,x in dd.attributes.items() if fc_attr in x])
-                logger.info("Found {} {} entries for attribute '{}' [{} unique entries]".format(S,
+                logger.info("Building a custom GFF file (custom.gff) using Sequana. Please wait")
+                fc_types = fc_type.split(',')
+                gff.save_gff_filtered(features=fc_types, filename='custom.gff')
+                cfg.general.custom_gff = 'custom.gff'
+
+            for fc_type in fc_types:
+                S = sum(df_gff['type'] == fc_type)
+                if S == 0:
+                    logger.error("Found 0 entries for feature '{}'. Please choose a valid feature from: {}".format(fc_type, valid_types))
+                    sys.exit()
+                else:
+                    logger.info("Found {} {} entries".format(S, fc_type))
+
+                # now we check the attribute:
+                dd = df_gff.query("type==@fc_type")
+                attributes = [y for x in dd.attributes for y in x.keys()]
+                S = attributes.count(fc_attr)
+                if S == 0:
+                    logger.error("Found 0 entries for attribute '{}'. Please choose a valid attribute from: {}".format(fc_attr, set(attributes)))
+                    sys.exit()
+                else:
+                    unique = set([x[fc_attr] for k,x in dd.attributes.items() if fc_attr in x])
+                    logger.info("Found {} {} entries for attribute '{}' [{} unique entries]".format(S,
 fc_attr, fc_type, len(unique)))
 
-            if S != len(unique):
-                logger.warning("Attribute non-unique. Feature counts should handle it")
+                if S != len(unique):
+                    logger.warning("Attribute non-unique. Feature counts should handle it")
 
-            if options.feature_counts_extra_attributes:
-                for extra_attr in cfg.feature_counts.extra_attributes.split(","):
-                    if extra_attr not in set(attributes):
-                        logger.error("{} not found in the GFF attributes. Try one of {}".format(extra_attr, set(attributes)))
-                        sys.exit()
+                if options.feature_counts_extra_attributes:
+                    for extra_attr in cfg.feature_counts.extra_attributes.split(","):
+                        if extra_attr not in set(attributes):
+                            logger.error("{} not found in the GFF attributes. Try one of {}".format(extra_attr, set(attributes)))
+                            sys.exit()
             
 
 
