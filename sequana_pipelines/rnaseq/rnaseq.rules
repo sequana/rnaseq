@@ -40,7 +40,11 @@ __data__input = manager.getrawdata()
 
 __strand__summary = "outputs/strand_summary.csv"
 rule rnaseq:
-    input: "multiqc/multiqc_report.html", ".sequana/rulegraph.svg", __strand__summary,
+    input: 
+        "multiqc/multiqc_report.html", 
+        ".sequana/rulegraph.svg", 
+        __strand__summary, 
+        "rnadiff/all_features.out"
 
 
 # Make sure it is absolute
@@ -553,6 +557,31 @@ elif manager.config.feature_counts.do and manager.config.general.aligner in ['sa
             """sequana salmon --input {input} --output {output} --gff {params.gff} --attribute ID   """
     expected_output += expand(__salmon_to_features__output, sample=manager.samples)
 
+"""if manager.config.general.aligner in ['salmon']:
+    rule merge_feature_counts:
+        input: expand(__salmon_mapping__output_counts, sample=manager.samples)
+        output: expand("randiff/feature_counts/{sample}, sample=manager.samples)
+        run:
+            tocopy = expand(__salmon_mapping__output_counts, sample=manager.samples)
+            shell("cp {} ./rnadiff/feature_counts/ ".format(" ".join(tocopy)))
+"""
+
+rule merge_feature_counts:
+    input: __guess_strandness__output
+    output: "rnadiff/all_features.out"
+    run:
+        def create_single_feature_file():
+            import glob
+            import pandas as pd
+            filenames = glob.glob("rnadiff/feature_counts/*_feature.out")
+            df = pd.read_csv(filenames[0], sep="\t", skiprows=1)
+            for filename in filenames[1:]:
+                other_df = pd.read_csv(filename, sep="\t", skiprows=1)
+                df = pd.merge(df, other_df)
+            df.to_csv("rnadiff/all_features.out",sep="\t", index=False)
+        create_single_feature_file()
+
+
 
 
 # FIXME do we need the mark_duplicates for RNASEQC2 ? is it compulsary ?
@@ -632,76 +661,19 @@ onsuccess:
     from sequana import BAM
     from sequana.modules_report.summary import SummaryModule2
 
-    logger.level = "INFO"
+    import colorlog
+    logger = colorlog.getLogger("sequana.rnaseq")
+    logger.setLevel("INFO")
     manager.teardown(
         extra_files_to_remove=["fastq_screen.conf", "requirements.txt"],
         extra_dirs_to_remove=[".genomes", "tmp", "logs"])
     manager.clean_multiqc(__multiqc__output)
 
-    #manager.plot_stats(N=len(manager.samples))
 
-    # copy feature counts
+    from sequana.featurecounts import FeatureCount
+    fc = FeatureCount("rnadiff/all_features.out")
+    fc.design_df.to_csv("rnadiff/design.csv", index=False)
 
-    try: # should be created already
-        os.mkdir("rnadiff")
-        os.mkdir("rnadiff/feature_counts")
-    except:pass
-
-    try:os.mkdir("rnadiff")
-    except:pass
-
-    logger.info("Building input files for rnadiff analysis")
-    # in theory, the options used in the feature counts should be used here 
-    # features counts -t option specifies the feature type from he GTF/GFF
-    # annotation e.g. exon, gene the -g option specify the attributes to be 
-    # found in the GFF. e.g. ID, locus_id, etc 
-    gff = GFF3(__gff_file__)
-    genetic_type = feature_type  # do not use config['feature_counts'] to take into account the custom case
-    attribute = config['feature_counts']['attribute']
-    gff.create_files_for_rnadiff("rnadiff/input", genetic_type=genetic_type, 
-        ID=attribute, fields=[attribute])
-    script = """
-from sequana.gff3 import GFF3
-gff = GFF3("{}")
-gff.create_files_for_rnadiff("input", genetic_type="{}", ID="{}", fields={})
-"""
-    script = script.format(__gff_file__, genetic_type, attribute, [attribute])
-    with open("rnadiff/build_input_files.py", "w") as fout:
-        fout.write(script)
-
-    sharedir = getpath("rnaseq")
-    if config['rnadiff']['mode'] == "one_factor":
-        filename = sharedir + os.sep + "rnadiff_one_factor.R"
-        outname = "rnadiff/{}".format("rnadiff_one_factor.R")
-        if os.path.exists(outname) is False:
-            shutil.copy(filename, outname)
-    else:
-        filename = sharedir + os.sep + "rnadiff_GLM.R"
-        outname = "rnadiff/{}".format("rnadiff_GLM.R")
-        if os.path.exists(filename) is False:
-            shutil.copy(filename, outname)
-
-    # depending on users choice, we copy the relevant feature counts
-    if manager.config.general.aligner == 'salmon':
-        tocopy = expand(__salmon_mapping__output_counts, sample=manager.samples)
-        shell("cp {} ./rnadiff/feature_counts/ ".format(" ".join(tocopy)))
-
-    # now we build a unique file. Probably not required anywhere
-    def create_single_feature_file():
-        import glob
-        filenames = glob.glob("rnadiff/feature_counts/*_feature.out")
-        import pandas as pd
-        df = pd.read_csv(filenames[0], sep="\t", skiprows=1)
-        for filename in filenames[1:]:
-            other_df = pd.read_csv(filename, sep="\t", skiprows=1)
-            df = pd.merge(df, other_df)
-        df.to_csv("rnadiff/feature_counts/all_features.out",sep="\t")
-    create_single_feature_file()
-
-    with open("rnadiff/create_target.py", "w") as fout:
-        from sequana_pipelines.rnaseq import create_target
-        with open(create_target.__file__, "r") as fin:
-            fout.write(fin.read())
 
 
     # THE HTML REPORT is defined hereafter
