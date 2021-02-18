@@ -1,19 +1,30 @@
-"""RNASeq pipeline
-
-Affiliation: Institut Pasteur @ 2016-2020
-
-This pipeline is part of Sequana software (sequana.readthedocs.io)
-"""
+# -*- coding: utf-8 -*-
+#
+#  This file is part of Sequana software
+#
+#  Copyright (c) 2016-2021 - Sequana Dev Team (https://sequana.readthedocs.io)
+#
+#  Distributed under the terms of the 3-clause BSD license.
+#  The full license is in the LICENSE file, distributed with this software.
+#
+#  Website:       https://github.com/sequana/sequana
+#  Documentation: http://sequana.readthedocs.io
+#  Contributors:  https://github.com/sequana/sequana/graphs/contributors
+##############################################################################
+# standard modules
 import glob
 import os
 import shutil
+
+# Some sequana related tools
 import sequana
-from os.path import join
 from sequana import snaketools as sm
 import sequana.featurecounts as fc
 
+# The main config file
 configfile: "config.yaml"
 
+# The sequana pipeline manager
 manager = sm.PipelineManager("rnaseq", config)
 manager.setup(globals(), mode="warning")
 
@@ -28,10 +39,10 @@ exec(open(sequana.modules["bowtie1_mapping_dynamic"], "r").read())
 exec(open(sequana.modules["bowtie1_index_dynamic"], "r").read())
 exec(open(sequana.modules["bowtie2_mapping_dynamic"], "r").read())
 exec(open(sequana.modules["bowtie2_index_dynamic"], "r").read())
-exec(open(sequana.modules["fastqc_dynamic"], "r").read())
 exec(open(sequana.modules["dynamic_unpigz"], "r").read())
-exec(open(sequana.modules["mark_duplicates_dynamic"], "r").read())
+exec(open(sequana.modules["fastqc_dynamic"], "r").read())
 exec(open(sequana.modules["feature_counts_dynamic"], "r").read())
+exec(open(sequana.modules["mark_duplicates_dynamic"], "r").read())
 
 
 __data__input = manager.getrawdata()
@@ -558,6 +569,7 @@ elif manager.config.feature_counts.do and manager.config.general.aligner in ['sa
     expected_output += expand(__salmon_to_features__output, sample=manager.samples)
 
 """if manager.config.general.aligner in ['salmon']:
+    from os.path import join
     rule merge_feature_counts:
         input: expand(__salmon_mapping__output_counts, sample=manager.samples)
         output: expand("randiff/feature_counts/{sample}, sample=manager.samples)
