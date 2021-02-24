@@ -9,4 +9,5 @@
 - deeptools
 - gffread
 - salmon
+- Rscript
 #- cufflinks

@@ -59,8 +59,8 @@ requirements: ''
 # - flowcell: flowcell ID
 sequencing:
     platform: Illumina
-    instrument: Hiseq2500
-    flowcell: H35CTBCXY
+    instrument: 'undefined'
+    flowcell: 'undefined'
 
 
 #################################################################
