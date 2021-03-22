@@ -45,7 +45,8 @@ Or use `sequanix <https://sequana.readthedocs.io/en/master/sequanix.html>`_ inte
 Requirements
 ~~~~~~~~~~~~
 
-This pipelines requires the following executable(s):
+This pipelines requires lots of third-party executable(s). Here is a list that
+may change. A Message will inform you would you be missing an executable:
 
 - bowtie
 - bowtie2
@@ -54,8 +55,24 @@ This pipelines requires the following executable(s):
 - picard
 - multiqc
 
-More may be needed depending on the configuration file options. For instance,
-you may use fastq_screen, in which case you need to install it and configure it. 
+You can install most of the tools using `damona <https://damona.readthedocs.io>`_::
+
+    damona create --name sequana_tools
+    damona activate sequana_tools
+    damona install sequana_tools
+    damona install salmon
+
+Or use the conda.yaml file available in this repository. If you start a new
+environment from scratch, those commands will create the environment and install
+all dependencies for you::
+
+    conda create --name sequana_env python 3.7.3 
+    conda activate sequana_env
+    conda install -c anaconda qt pyqt>5
+    pip install sequana
+    pip install sequana_rnaseq
+    conda install --file https://raw.githubusercontent.com/sequana/rnaseq/master/conda.yaml
+
 
 .. image:: https://raw.githubusercontent.com/sequana/sequana_rnaseq/master/sequana_pipelines/rnaseq/dag.png
 
@@ -63,19 +80,39 @@ you may use fastq_screen, in which case you need to install it and configure it.
 Details
 ~~~~~~~~~
 
-This pipeline runs **rnaseq** in parallel on the input fastq files (paired or not). 
-A brief sequana summary report is also produced.
+This pipeline runs a **RNA-seq** analysis of sequencing data. It runs in 
+parallel on a set of input FastQ files (paired or not). 
+A brief HTML report is produced together with a MultiQC report.
 
 This pipeline is complex and requires some expertise for the interpretation.
+Many online-resources are available and should help you deciphering the output. 
 
 Yet, it should be quite straigtforward to execute it as shown above. The
-pipeline uses bowtie1 to look for rRNA. Then, it clean the data with cutapdat.
-If no adapters are provided (default), reads are trimmed for low quality bases.
-Then, mapping is performed with star or bowtie2 (--aligner option). Finally,
+pipeline uses bowtie1 to look for ribosomal contamination (rRNA). Then, 
+it cleans  the data with cutapdat if you say so (your data may already be
+pre-processed). If no adapters are provided (default), reads are 
+trimmed for low quality bases only. Then, mapping is performed with standard mappers such as 
+star or bowtie2 (--aligner option). Finally,
 feature counts are extracted from the previously generated BAM files. We guess
 the strand and save the feature counts into the directoy
-./rnadiff/feature_counts. DGE is not part of the pipeline. To do so, we use a
-wrapper of deseq2, which will be provided later.
+./rnadiff/feature_counts. 
+
+The pipelines stops there. However, RNA-seq analysis are followed by a different
+analysis (DGE hereafter). Although the DGE is not part of the pipeline, you can
+performed it with standard tools using the data in ./rnadiff directory. One such
+tool is provided within our framework (based on the well known DEseq2 software).
+
+Using our framework::
+
+    cd rnadiff
+    sequana rnadiff --design design.csv --features all_features.out --annotation ANNOT \
+           --feature-name FEAT --attribute-name ATTR
+
+where ANNOT is the annotation file of your analysis, FEAT and ATTR the attribute
+and feature used in your analysis (coming from the annotation file).
+
+This produces a HTML repot summarizing you differential analysis.
+
 
 Rules and configuration details
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -93,6 +130,8 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.14.0    * remove fastq_Screen. One can use sequana_multitax for taxonomic
+            content and contamination.
 0.13.0    * Update to use the new sequana version and the RNADiff tools.
             target file is not created anymore, 
           * the file all_feature.out is now a rule by itself to make sure it is
