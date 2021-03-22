@@ -152,19 +152,6 @@ mapping:
                 type: int
                 required: True
                 range: { min: 1 }
-    'fastq_screen':
-        type: map
-        mapping:
-            "do":
-                type: bool
-            "config_file":
-                type: str
-            "options":
-                type: str
-            "aligner":
-                type: str
-            "report":
-                type: bool
 
     'coverage':
         type: map

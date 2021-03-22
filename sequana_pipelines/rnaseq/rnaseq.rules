@@ -258,43 +258,6 @@ else:
     __clean_fastq__output = __data__input
 
 
-if manager.config.fastq_screen.do:
-
-    # if users has not changed the fastq_screen conf file, we can build the phix
-    if os.path.exists("fastq_screen.conf"):
-        if "DATABASE\tphiX174\t.genomes/phiX174/phiX174 BOWTIE2\n" in open("fastq_screen.conf").readlines():
-            shell("mkdir -p .genomes/phiX174")
-
-            # copy the phiX174.fa
-            from sequana.pipelines_common import get_pipeline_location as getpath
-            phix = getpath("rnaseq") + "/phiX174.fa"
-
-            # build index
-            shell("cp {} .genomes/phiX174".format(phix))
-            shell("cd .genomes/phiX174 ; bowtie2-build -f phiX174.fa phiX174 1> phiX174.log 2> phiX174.err; cd ..")
-            shell("cd .genomes/phiX174 ; samtools faidx phiX174.fa; cd ..")
-    # TODO:
-    # check existence of all indexing file for each entry in fastqscree
-
-    # Fastq Screen
-    __fastq_screen__input = __clean_fastq__output
-    __fastq_screen__logs = manager.getname("fastq_screen", ".logs")
-
-    # hack could be improved TODO
-    __fastq_screen__output = [x.replace(".fastq.gz", "_screen.txt") for x in __fastq_screen__input]
-
-    include: sm.modules["fastq_screen"]
-
-    if manager.config.fastq_screen.report:
-        __fastq_screen_report__input = __fastq_screen__output
-        __fastq_screen_report__figure = manager.getname("fastq_screen", "_report.svg")
-        __fastq_screen_report__logs =  manager.getname("fastq_screen", "report.logs")
-        include: sm.modules["fastq_screen_report"]
-        expected_output.extend(expand(__fastq_screen_report__figure, sample=manager.samples))
-    else:
-        expected_output.extend(expand(__fastq_screen__output, sample=manager.samples))
-
-
 
 # FASTQC on input data set
 __fastqc_filtered__input_fastq = __clean_fastq__output
@@ -382,6 +345,8 @@ elif manager.config.general.aligner == "star":
     include: sm.modules["star_mapping"]
     expected_output.extend(expand(__star_mapping__sort, sample=manager.samples))
     __mapping_output = __star_mapping__sort
+
+
 elif manager.config.general.aligner == "salmon":
     __salmon_mapping__input_fastq = __clean_fastq__output
     __salmon_mapping__output_counts = "{sample}/salmon_mapping/{sample}_quant.sf"
@@ -676,18 +641,41 @@ onsuccess:
     logger = colorlog.getLogger("sequana.rnaseq")
     logger.setLevel("INFO")
     manager.teardown(
-        extra_files_to_remove=["fastq_screen.conf", "requirements.txt"],
+        extra_files_to_remove=["requirements.txt"],
         extra_dirs_to_remove=[".genomes", "tmp", "logs"])
     manager.clean_multiqc(__multiqc__output)
 
 
+    # ------------------------------------------- RNADIFF
+    # 1. save data for the RNADiff analysis
     from sequana.featurecounts import FeatureCount
     try:
         fc = FeatureCount("rnadiff/all_features.out", guess_design=True)
         fc.design_df.to_csv("rnadiff/design.csv", index=False)
     except:
-        logger.warning("Could not build the design.csv file in rnadiff. You will need to create it manually")
+        msg = "Could not build the design.csv file in rnadiff. You will need to create it manually."
+        logger.warning(msg)
+        with open("rnadiff/README.rst", "w") as fout:
+            fout.write(f"""{msg}
+The design.csv file must be formatted as follows (for 2 conditions with 3 replicates each):
 
+label,condition
+samplename_1,condition_name_1
+samplename_2,condition_name_1
+samplename_3,condition_name_1
+samplename_4,condition_name_2
+samplename_5,condition_name_2
+samplename_6,condition_name_2
+""")
+
+    # 2. save the script
+    with open("rnadiff/rnadiff.sh", "w") as fout:
+        attribute = config['feature_counts']['attribute']
+        feature = config['feature_counts']['feature']
+        fout.write("#/bin/sh\nsequana rnadiff --features all_features.out " +
+            f" --annotation {__gff_file__} --design design.csv --feature-name {feature} --attribute-name {attribute}")
+    shell("chmod 755 rnadiff/rnadiff.sh")
+        
 
 
 
@@ -710,11 +698,11 @@ onsuccess:
         logger.warning(err)
         guess = "?"
 
-    intro ="""
+
+    intro = f"""
     <h2>Overview</h2>
     <p>
-    The rnaseq pipeline maps the reads on the provided reference using {}. Features counts were
-    extracted and are available in <a href="./rnadiff/feature_counts">feature counts</a> directory; ready to use for differential gene analysis. 
+    The RNA-seq pipeline maps the reads on the provided reference (called <i>{__fasta_file__.split("/")[-1]}</i>). Features counts were extracted and are available in the <a href="./rnadiff/feature_counts">feature counts</a> directory; those files are entry points for differential gene expression analysis. The differential analysis, if performed with Sequana, should be available in the <a href="rnadiff/rnadiff.html">DGE analysis directory</a>. 
     </p>
 
     <p>A <a href="multiqc/multiqc_report.html">multiqc report</a> is available, where various QC and mapping quality plots can be visualised.

@@ -17,8 +17,7 @@ input_pattern: '*fastq.gz'
 #
 # :Parameters:
 #
-# - aligner: either star, bowtie or bowtie2. fastq_screen, if checked, uses
-#        either bowtie2 by default.
+# - aligner: either star, bowtie or bowtie2. bowtie2 by default.
 # - genome_directory: directory where all indexes are written.
 # - rRNA_contaminant: path to an existing fasta file for ribosomal RNA (to be found in
 #   genome_directory)
@@ -127,22 +126,6 @@ cutadapt:
     quality: 30                 # {"range": [0,40]}
     threads: 4
 
-
-#############################################################################
-# fastq_screen used to align reads against genomes file contain in conf file with bowtie2
-#
-# :Parameters:
-#
-# - do: if unchecked, this rule is ignored
-# - conf: the name of the configuration file
-# - aligner: should be bowtie2. do not change
-#
-fastq_screen:
-    do: false
-    config_file: fastq_screen.conf
-    options: --subset 200000
-    aligner: bowtie2
-    report: true
 
 
 

@@ -75,11 +75,6 @@ fasta file to search for contaminants""")
         so = CutadaptOptions()
         so.add_options(self)
 
-        # fastq_screen
-        pipeline_group = self.add_argument_group("section_fastq_screen")
-        pipeline_group.add_argument("--do-fastq-screen", action="store_true",
-            default=False,
-            help="do fastq_screen ")
         pipeline_group.add_argument("--skip-gff-check", action="store_true",
             default=False,
             help="""By default we check the coherence between the input
@@ -87,15 +82,6 @@ GFF file and related options (e.g. --feature_counts_feature_type and
 --feature_counts_attribute options). This may take time e.g. for mouse or human.
 Using this option skips the sanity checks""")
 
-
-        pipeline_group.add_argument("--fastq-screen-conf",
-            default="fastq_screen.conf", type=str,
-            help="""a valid fastqc_screen.conf file. See fastq_screen
-documentation for details. In a nutshell, add a line for each genome you want to
-search for in your input data. Each line is 'DATABASE name path BOWTIE2'. The
-path includes the path to the genome + its prefix name. If you have your 
-own fastq-screen DB and configuration file, use this option. Otherwise, the 
-default sequana_rnaseq conf is used (phiX174 only)""")
 
         # feature counts related
         so = FeatureCountsOptions()
@@ -252,20 +238,7 @@ def main(args=None):
         # -------------------------------------------------------- RNAdiff
         cfg.rnadiff.mode = options.rnadiff_mode
 
-        # ----------------------------------------------------- fastq_screen conf
-        # copy the default fastq_screen conf file
         import sequana_pipelines.rnaseq
-        shutil.copy(os.path.join(sequana_pipelines.rnaseq.__path__[0] ,
-                "fastq_screen.conf"), manager.workdir)
-        if options.do_fastq_screen:
-            cfg.fastq_screen.do = True
-        else:
-            cfg.fastq_screen.do = False
-
-        if os.path.exists(options.fastq_screen_conf):
-            cfg.fastq_screen.config_file = os.path.abspath(options.fastq_screen_conf)
-            # copy the fastq_screen.conf input or default file
-            shutil.copy(options.fastq_screen_conf, manager.workdir)
 
 
         # SANITY CHECKS
