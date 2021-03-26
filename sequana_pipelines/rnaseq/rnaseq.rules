@@ -577,15 +577,19 @@ if config["rnaseqc"]["do"]:
 
     # for multiqc, important that output directories are called rnaseqc
     #__rnaseqc__input_genome = __fasta_file__
-    if os.path.exists(config['rnaseqc']['gtf_file']):
+    #
+    __gtf_file__ = config['rnaseqc']['gtf_file'].strip()
+    if __gtf_file__ and os.path.exists(__gtf_file__):
         __rnaseqc__input_gtf = config['rnaseqc']['gtf_file']
-    elif os.path.exists(genome_directory + os.sep + config['rnaseqc']['gtf_file']):
-        __rnaseqc__input_gtf = genome_directory + os.sep + config['rnaseqc']['gtf_file']
+    elif __gtf_file__ and os.path.exists(genome_directory + os.sep + __gtf_file__):
+        __rnaseqc__input_gtf = genome_directory + os.sep + __gtf_file__
     else:
-        error("Could not find {} locally or in {}".format(
+        error("GTF file {} not found locally or in {}. Edit config.yaml to set do_rnaseqc to False or provide a GTF file in the config file. You may use 'sequana gff2gtf {}' to generate the GTF file".format(
             config['rnaseqc']['gtf_file'],
-            config['general']['genome_directory']
+            config['general']['genome_directory'],
+            __gff_file__
         ))
+        sys.exit(1)
     __rnaseqc__params_directory = "{sample}/rnaseqc"
     __rnaseqc__logs = "{sample}/rnaseqc/{sample}.log"
     __rnaseqc__params_sample = "{sample}"
@@ -631,15 +635,15 @@ localrules: conda, rulegraph
 
 onsuccess:
     # Create plots about stats
-    from sequana import logger
+    from sequana import logger as log
     from sequana.gff3 import GFF3
     from sequana.pipelines_common import get_pipeline_location as getpath
     from sequana import BAM
     from sequana.modules_report.summary import SummaryModule2
 
     import colorlog
-    logger = colorlog.getLogger("sequana.rnaseq")
-    logger.setLevel("INFO")
+    log = colorlog.getLogger("sequana.rnaseq")
+    log.setLevel("INFO")
     manager.teardown(
         extra_files_to_remove=["requirements.txt"],
         extra_dirs_to_remove=[".genomes", "tmp", "logs"])
@@ -702,7 +706,7 @@ samplename_6,condition_name_2
     intro = f"""
     <h2>Overview</h2>
     <p>
-    The RNA-seq pipeline maps the reads on the provided reference (called <i>{__fasta_file__.split("/")[-1]}</i>). Features counts were extracted and are available in the <a href="./rnadiff/feature_counts">feature counts</a> directory; those files are entry points for differential gene expression analysis. The differential analysis, if performed with Sequana, should be available in the <a href="rnadiff/rnadiff.html">DGE analysis directory</a>. 
+    The RNA-seq pipeline maps the reads on the provided reference (called <i>{__fasta_file__.split("/")[-1]}</i>). Features counts were extracted and are available in the <a href="./rnadiff/feature_counts">feature counts</a> directory; those files are entry points for differential gene expression analysis. The differential analysis, if performed, should be available in the <a href="rnadiff/rnadiff.html">DGE analysis directory</a>. In addition, if enrichment was performed (GO or Kegg pathways), it should be available in the <a href="rnadiff/enrichment/summary.html"></a> directory.
     </p>
 
     <p>A <a href="multiqc/multiqc_report.html">multiqc report</a> is available, where various QC and mapping quality plots can be visualised.
@@ -727,16 +731,25 @@ samplename_6,condition_name_2
 
 
     try:
+        intro += """<h2>ribosomal / contaminant content</h2>"""
         df = pd.read_csv("multiqc/multiqc_data/multiqc_bowtie1.txt", sep='\t')
         rRNA = df.reads_aligned_percentage.mean()
-        if rRNA < 10:   
-            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is reasonable</p>"
+        if rRNA < 10:
+            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is low. "
         elif rRNA < 20:
-            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is moderately low</p>"
+            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is moderately low. "
         elif rRNA > 20:
-            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is relatively high</p>"
+            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is relatively high. "
         elif rRNA > 50:
-            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is very high high</p>"
+            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is very high high. "
+        intro += """Please see the <a href="multiqc/multiqc_report.html#bowtie1">section of the multiqc report</a> for details. Here below</p>"""
+
+        from sequana.multiqc.plots import Bowtie1Reader
+        if os.path.exists("multiqc/multiqc_data/multiqc_bowtie1.txt"):
+            br = Bowtie1Reader("multiqc/multiqc_data/multiqc_bowtie1.txt")
+            fig = br.plot_bar(html_code=True)
+            from plotly import offline
+            intro += offline.plot(fig, output_type="div", include_plotlyjs=True)
     except:
         pass
 

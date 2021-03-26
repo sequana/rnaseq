@@ -106,7 +106,7 @@ reads.""")
             help="do RNA-seq QC using RNAseQC v2")
         pipeline_group.add_argument('--rnaseqc-gtf-file',
             help="""The GTF file to be used for RNAseQC. Without a valid GTF,
-            RNAseqQC will not work. Again, yu may try sequana.gff3 module to build the gtf""")
+            RNAseqQC will not work. You may try sequana.gff3 module to build the gtf from the GFF file""")
 
         # RNADIFF
         pipeline_group = self.add_argument_group("section_rnadiff")
@@ -152,6 +152,7 @@ def main(args=None):
     manager.setup()
     from sequana import logger
     logger.setLevel(options.level)
+    logger.name = "sequana_rnaseq" 
 
     # fill the config file with input parameters
     if options.from_project is None:
@@ -233,6 +234,9 @@ def main(args=None):
 
         # -------------------------------------------------------- RNAseqQC
         cfg.rnaseqc.do = options.do_rnaseqc
+        if options.rnaseqc_gtf_file is None:
+            logger.warning("You asked for RNA_seqc QC assessements but no GTF file provided; Switching off. You may use sequana gff2gtf command if needed")
+            cfg.rnaseqc.do = False
         cfg.rnaseqc.gtf_file = options.rnaseqc_gtf_file
 
         # -------------------------------------------------------- RNAdiff

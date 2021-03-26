@@ -130,9 +130,9 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
-0.14.0    * remove fastq_Screen. One can use sequana_multitax for taxonomic
+0.13.0    * remove fastq_Screen. One can use sequana_multitax for taxonomic
             content and contamination.
-0.13.0    * Update to use the new sequana version and the RNADiff tools.
+          * Update to use the new sequana version and the RNADiff tools.
             target file is not created anymore, 
           * the file all_feature.out is now a rule by itself to make sure it is
             created making the pipeline more reliable and simplify the onsucces
