@@ -101,12 +101,15 @@ reads.""")
         pipeline_group.add_argument('--do-mark-duplicates', action="store_true", 
             help="""Mark duplicates. To be used e.g. with QCs""")
 
-        pipeline_group = self.add_argument_group("pipeline_RNAseQC")
         pipeline_group.add_argument('--do-rnaseqc', action="store_true",
             help="do RNA-seq QC using RNAseQC v2")
         pipeline_group.add_argument('--rnaseqc-gtf-file',
             help="""The GTF file to be used for RNAseQC. Without a valid GTF,
             RNAseqQC will not work. You may try sequana.gff3 module to build the gtf from the GFF file""")
+        pipeline_group.add_argument('--do-rseqc', action="store_true",
+            help="""do RNA-seq QC using RseQC. This will need a BED file
+corresponding to your GFF file. For prokaryotes, the BED file is created on the
+fly.""")
 
         # RNADIFF
         pipeline_group = self.add_argument_group("section_rnadiff")
@@ -239,6 +242,8 @@ def main(args=None):
             cfg.rnaseqc.do = False
         cfg.rnaseqc.gtf_file = options.rnaseqc_gtf_file
 
+        cfg.rseqc.do = options.do_rseqc
+        cfg.rseqc.bed_file = options.rseqc_bed_file
         # -------------------------------------------------------- RNAdiff
         cfg.rnadiff.mode = options.rnadiff_mode
 

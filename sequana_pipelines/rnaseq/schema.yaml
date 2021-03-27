@@ -213,6 +213,13 @@ mapping:
                 type: str
             "options":
                 type: str
+    'rnaseqc':
+        type: map
+        mapping:
+            "do":
+                type: bool
+            "bed_file":
+                type: str
     'bowtie2_mapping_ref':
         type: map
         mapping:
