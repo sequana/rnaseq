@@ -7,7 +7,7 @@
 # If input_directory provided, use it otherwise if input_pattern provided,
 # use it, otherwise use input_samples.
 # ============================================================================
-input_directory: 
+input_directory: /home/cokelaer/Work/github/sequana_pipelines/rnaseq/sequana_pipelines/rnaseq/data/Lepto
 input_readtag: _R[12]_
 input_pattern: '*fastq.gz'
 # =========================================== Sections for the users
@@ -17,7 +17,7 @@ input_pattern: '*fastq.gz'
 #
 # :Parameters:
 #
-# - aligner: either star, bowtie or bowtie2. bowtie2 by default.
+# - aligner: either star, bowtie or bowtie2. 
 # - genome_directory: directory where all indexes are written.
 # - rRNA_contaminant: path to an existing fasta file for ribosomal RNA (to be found in
 #   genome_directory)
@@ -30,13 +30,13 @@ input_pattern: '*fastq.gz'
 #   it to True. Indexing is followed by force_indexing to make sure we do not
 #   erase the index files, which may be large.
 general:
-    aligner: star
-    genome_directory: 
-    contaminant_file: ""
+    aligner: bowtie2
+    genome_directory: /home/cokelaer/Work/github/sequana_pipelines/rnaseq/sequana_pipelines/rnaseq/data/Lepto
+    contaminant_file: ''
     rRNA_feature: rRNA
     indexing: false
     force_indexing: false
-    custom_gff:
+    custom_gff: ''
 
 
 ######################
@@ -58,8 +58,8 @@ requirements: ''
 # - flowcell: flowcell ID
 sequencing:
     platform: Illumina
-    instrument: 'undefined'
-    flowcell: 'undefined'
+    instrument: undefined
+    flowcell: undefined
 
 
 #################################################################
@@ -70,7 +70,7 @@ sequencing:
 # - options: string with any valid FastQC options
 #
 fastqc:
-    skip_fastqc_samples: True
+    skip_fastqc_samples: true
     options: --nogroup
 
 
@@ -125,8 +125,6 @@ cutadapt:
     options: -O 6 --trim-n
     quality: 30                 # {"range": [0,40]}
     threads: 4
-
-
 
 
 #############################################################################
@@ -187,7 +185,7 @@ bowtie2_mapping_ref:
 
 
 salmon_mapping:
-    options: '-l A'
+    options: -l A
     threads: 4
 
 #############################################################################
@@ -218,13 +216,13 @@ salmon_mapping:
 #
 feature_counts:
     do: true
-    options:         ## if exon/CDS is used, put -O option
-    strandness:      # set to 0, 1, 2 to force te type of strandness
+    options: ''      ## if exon/CDS is used, put -O option
+    strandness: ''   # set to 0, 1, 2 to force te type of strandness
     threads: 1       # 
     tolerance: 0.15  # use to figure out the strandness. no need to change
     feature: gene    # could be exon, mRNA, etc
     attribute: ID    # could be ID, gene_id, etc
-    extra_attributes: # by default, stores only the main attribute, but could add more
+    extra_attributes: '' # by default, stores only the main attribute, but could add more
 
 #############################################################################
 # bamCoverage write file in bigwig format from BAM files.
@@ -261,7 +259,7 @@ feature_counts:
 #                      needed for including single-end and orphan reads.
 # - threads: number of threads to be used
 coverage:
-    do: false
+    do: true
     binSize: 10
     genomeSize: 2150570000  ##mm10
     extendReads: 65
@@ -295,7 +293,7 @@ igvtools:
 # - tmpdir: write tempory file on this directory (default TMP_DIR=/tmp/, but could be "TMP_DIR=/local/scratch/")
 #
 mark_duplicates:
-    do: false
+    do: true
     remove: false ## may be True
     tmpdir: ./tmp/
     threads: 4
@@ -315,9 +313,14 @@ mark_duplicates:
 #            reference fasta.
 # - options: any options recognised by RNA-seQC tool
 rnaseqc:
-    do: false
-    gtf_file:
-    options: ' --coverage '
+    do: true
+    gtf_file: 'lepto.gtf'
+    options: --coverage
+
+# if be_file not provided, try to create one on the fly
+rseqc:
+    do: true
+    bed_file: 
 
 
 #############################################################################
@@ -331,7 +334,7 @@ rnaseqc:
 # - config_file: by default, we use sequana RNA-seq multiqc_config file. 
 #       If you want your own multiqc, fill this entry
 multiqc:
-    options: -f -x *_init_* -x *left_kept_reads* -x *fastqc_samples* -e htseq -e slamdunk
+    options: -f  -x *_init_* -x *left_kept_reads* -x *fastqc_samples* -e htseq -e slamdunk
     output_directory: multiqc
     config_file: multiqc_config.yaml
 

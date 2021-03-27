@@ -558,6 +558,70 @@ rule merge_feature_counts:
         create_single_feature_file()
 
 
+if config['rseqc']['do']:
+
+    if config['rseqc']['bed_file']:
+        __bed__file =  config['rseqc']['bed_file']
+    else:
+        __bed__file = "outputs/temp.bed"
+        rule gff2bed:
+            input: __gff_file__
+            output: __bed__file
+            run:
+                from sequana import GFF3
+                g = GFF3(input[0])
+                g.to_bed(output[0], 'Name')
+
+
+    rule rseqc:
+        input:
+            bam=__final_bam__,
+            bed=__bed__file
+
+        # no need to put all outputs
+        output:
+            bam_stat= "{sample}/rseqc/{sample}_bam_stat.txt",
+            #read_gc="{sample}/rseqc/{sample}.GC.xls",
+            geneBody_coverage="{sample}/rseqc/{sample}.geneBodyCoverage.txt"
+        params:
+            paired="PE" if manager.paired else "SE"
+        log:
+            "{sample}/rseqc/{sample}.log"
+        shell:
+            """
+
+            # for paired data only
+            inner_distance.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample} -r {input.bed}
+
+            # FIXME. For now GC not very useful in the output so commented
+            # read_GC.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample}
+
+            # genebody coverage
+            geneBody_coverage.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample} -r {input.bed} 1>{log}2>{log}
+
+            # uses bigwig redundant with geneBody_coverage
+            # geneBody_coverage2.py -i {wildcards.sample}/bamCoverage/{wildcards.sample}.norm.bw  -o {wildcards}/rseq/{wildcards.sample} -r test.bed
+
+            # FIXME. not included in the multiqc module so commented for now
+            #clipping_profile.py -i {input.bam} -s {params.paired} -o {wildcards.sample}/rseqc/{wildcards.sample}
+        
+            read_duplication.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample} 
+            junction_annotation.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample} -r {input.bed} 
+            junction_saturation.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample}  -r {input.bed}
+            infer_experiment.py -i {input.bam} -r {input.bed} > {wildcards.sample}/rseqc/{wildcards.sample}.infer.txt
+
+    
+            # bam stats  KEEP last since that is the expected output to make sure
+            # previous files (not listed in output:) are computed first.
+            bam_stat.py -i {input.bam} > {output.bam_stat}
+            """
+
+    # one series is enough. if bam_stats is created, others are also created
+    expected_output.extend(
+        expand("{sample}/rseqc/{sample}_bam_stat.txt", sample=manager.samples)
+    )
+
+
 
 
 # FIXME do we need the mark_duplicates for RNASEQC2 ? is it compulsary ?
@@ -579,17 +643,21 @@ if config["rnaseqc"]["do"]:
     #__rnaseqc__input_genome = __fasta_file__
     #
     __gtf_file__ = config['rnaseqc']['gtf_file'].strip()
-    if __gtf_file__ and os.path.exists(__gtf_file__):
-        __rnaseqc__input_gtf = config['rnaseqc']['gtf_file']
-    elif __gtf_file__ and os.path.exists(genome_directory + os.sep + __gtf_file__):
-        __rnaseqc__input_gtf = genome_directory + os.sep + __gtf_file__
-    else:
-        error("GTF file {} not found locally or in {}. Edit config.yaml to set do_rnaseqc to False or provide a GTF file in the config file. You may use 'sequana gff2gtf {}' to generate the GTF file".format(
-            config['rnaseqc']['gtf_file'],
-            config['general']['genome_directory'],
-            __gff_file__
-        ))
-        sys.exit(1)
+
+    # Could be a local file. If provided, 
+    if __gtf_file__:
+        if os.path.exists(__gtf_file__) is False:
+            logger.error(f"{__gtf_file__} not found")
+            sys.exit(1)
+    else: # if gtf not provided, maybe available in the genome directory ?
+        __gtf_file__   = __prefix_name__ + ".gtf"
+        if os.path.exists(__gtf_file__) is False:
+            gdir = config["general"]["genome_directory"]
+            from sequana import logger as logs  # to not interfere with snakemake
+            logs.critical(f"{__gtf_file__} not found in {gdir}. Trying the GFF file")
+            __gtf_file__ = __prefix_name__ + ".gff"
+
+    __rnaseqc__input_gtf = __gtf_file__
     __rnaseqc__params_directory = "{sample}/rnaseqc"
     __rnaseqc__logs = "{sample}/rnaseqc/{sample}.log"
     __rnaseqc__params_sample = "{sample}"
@@ -635,15 +703,15 @@ localrules: conda, rulegraph
 
 onsuccess:
     # Create plots about stats
-    from sequana import logger as log
+    from sequana import logger
     from sequana.gff3 import GFF3
     from sequana.pipelines_common import get_pipeline_location as getpath
     from sequana import BAM
     from sequana.modules_report.summary import SummaryModule2
 
     import colorlog
-    log = colorlog.getLogger("sequana.rnaseq")
-    log.setLevel("INFO")
+    logger = colorlog.getLogger("sequana.rnaseq")
+    logger.setLevel("INFO")
     manager.teardown(
         extra_files_to_remove=["requirements.txt"],
         extra_dirs_to_remove=[".genomes", "tmp", "logs"])
@@ -706,7 +774,7 @@ samplename_6,condition_name_2
     intro = f"""
     <h2>Overview</h2>
     <p>
-    The RNA-seq pipeline maps the reads on the provided reference (called <i>{__fasta_file__.split("/")[-1]}</i>). Features counts were extracted and are available in the <a href="./rnadiff/feature_counts">feature counts</a> directory; those files are entry points for differential gene expression analysis. The differential analysis, if performed, should be available in the <a href="rnadiff/rnadiff.html">DGE analysis directory</a>. In addition, if enrichment was performed (GO or Kegg pathways), it should be available in the <a href="rnadiff/enrichment/summary.html"></a> directory.
+    The RNA-seq pipeline maps the reads on the provided reference (called <i>{__fasta_file__.split("/")[-1]}</i>). Features counts were extracted and are available in the <a href="./rnadiff/feature_counts">feature counts</a> directory; those files are entry points for differential gene expression analysis. The differential analysis, if performed with Sequana, should be available in the <a href="rnadiff/rnadiff.html">DGE analysis directory</a>. 
     </p>
 
     <p>A <a href="multiqc/multiqc_report.html">multiqc report</a> is available, where various QC and mapping quality plots can be visualised.
@@ -731,25 +799,16 @@ samplename_6,condition_name_2
 
 
     try:
-        intro += """<h2>ribosomal / contaminant content</h2>"""
         df = pd.read_csv("multiqc/multiqc_data/multiqc_bowtie1.txt", sep='\t')
         rRNA = df.reads_aligned_percentage.mean()
-        if rRNA < 10:
-            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is low. "
+        if rRNA < 10:   
+            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is reasonable</p>"
         elif rRNA < 20:
-            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is moderately low. "
+            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is moderately low</p>"
         elif rRNA > 20:
-            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is relatively high. "
+            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is relatively high</p>"
         elif rRNA > 50:
-            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is very high high. "
-        intro += """Please see the <a href="multiqc/multiqc_report.html#bowtie1">section of the multiqc report</a> for details. Here below</p>"""
-
-        from sequana.multiqc.plots import Bowtie1Reader
-        if os.path.exists("multiqc/multiqc_data/multiqc_bowtie1.txt"):
-            br = Bowtie1Reader("multiqc/multiqc_data/multiqc_bowtie1.txt")
-            fig = br.plot_bar(html_code=True)
-            from plotly import offline
-            intro += offline.plot(fig, output_type="div", include_plotlyjs=True)
+            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is very high high</p>"
     except:
         pass
 
