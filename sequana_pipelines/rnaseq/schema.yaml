@@ -213,7 +213,7 @@ mapping:
                 type: str
             "options":
                 type: str
-    'rnaseqc':
+    'rseqc':
         type: map
         mapping:
             "do":
