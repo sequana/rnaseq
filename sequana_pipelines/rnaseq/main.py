@@ -110,6 +110,8 @@ reads.""")
             help="""do RNA-seq QC using RseQC. This will need a BED file
 corresponding to your GFF file. For prokaryotes, the BED file is created on the
 fly.""")
+        pipeline_group.add_argument('--rseqc-bed-file',
+            help="""The rseQC input bed file.""")
 
         # RNADIFF
         pipeline_group = self.add_argument_group("section_rnadiff")
@@ -256,7 +258,7 @@ def main(args=None):
         # check carfully the GFF; if users knows what he is doing; no need to
         # check the GFF either
         if options.skip_gff_check is False and "," not in cfg.feature_counts.feature:
-            logger.info("checking your input GFF file and rRNA feature if provided")
+            logger.info("Checking your input GFF file and rRNA feature if provided")
 
             from sequana.gff3 import GFF3
             genome_directory = os.path.abspath(cfg["general"]["genome_directory"])
