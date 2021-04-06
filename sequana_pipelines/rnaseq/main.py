@@ -240,7 +240,10 @@ def main(args=None):
         # -------------------------------------------------------- RNAseqQC
         cfg.rnaseqc.do = options.do_rnaseqc
         if options.rnaseqc_gtf_file is None:
-            logger.warning("You asked for RNA_seqc QC assessements but no GTF file provided; Switching off. You may use sequana gff2gtf command if needed")
+            logger.warning("You asked for RNA_seqc QC assessements but no GTF"
+" file provided; Please use --rnaseqc-gtf-file option. Switching off in your"
+" config file and continuing. You may use 'sequana gff2gtf input.gff' to create"
+" the gtf file")
             cfg.rnaseqc.do = False
         cfg.rnaseqc.gtf_file = options.rnaseqc_gtf_file
 
