@@ -266,17 +266,19 @@ def main(args=None):
             prefix_name = genome_directory + "/" + genome_name
             gff_file = prefix_name + ".gff"
             gff = GFF3(gff_file)
-            df_gff = gff.get_df()
-            valid_types = gff.get_types()
+            logger.info("Reading GFF. Can take a while on Eukaryotes. Please be patient")
+            df_gff = gff.df                   # This takes one minute on eukaryotes. No need to
+            valid_features = gff.features     # about 3 seconds
+            valid_attributes = gff.attributes # about 10 seconds
 
             # first check the rRNA feature
             if cfg['general']["rRNA_feature"] and \
-                cfg['general']["rRNA_feature"] not in valid_types:
+                cfg['general']["rRNA_feature"] not in valid_features:
 
                 logger.error("rRNA feature not found in the input GFF ({})".format(gff_file) +
                     " This is probably an error. Please check the GFF content and /or"
                     " change the feature name with --rRNA-feature based on the content"
-                    " of your GFF. Valid features are: {}".format(valid_types))
+                    " of your GFF. Valid features are: {}".format(valid_features))
                 sys.exit()
 
             # then, check the main feature
@@ -296,7 +298,7 @@ def main(args=None):
             for fc_type in fc_types:
                 S = sum(df_gff['type'] == fc_type)
                 if S == 0:
-                    logger.error("Found 0 entries for feature '{}'. Please choose a valid feature from: {}".format(fc_type, valid_types))
+                    logger.error("Found 0 entries for feature '{}'. Please choose a valid feature from: {}".format(fc_type, valid_features))
                     sys.exit()
                 else:
                     logger.info("Found {} {} entries".format(S, fc_type))
