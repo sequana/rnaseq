@@ -130,18 +130,14 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
-0.13.0    * remove fastq_Screen. One can use sequana_multitax for taxonomic
+0.13.0    * Major update to use the new sequana version and the RNADiff tools.
+          * remove fastq_screen. One can use sequana_multitax for taxonomic
             content and contamination.
-          * Update to use the new sequana version and the RNADiff tools.
-            target file is not created anymore, 
-          * the file all_feature.out is now a rule by itself to make sure it is
-            created making the pipeline more reliable and simplify the onsucces
-            section.
-          * onsuccess do not need to build derivative of the GFF, or R scripts
-            related to externa rnadiff image, which is now handle by the tool
-            'sequana rnadiff'
+          * cutadapt is now replaced by fastp, although it can still be used.
+          * full integration of salmon for prokaryotes and eukaryotes
           * user interface has now a --skip-gff-check option. Better handling of
             input gff with more meaningful messages
+          * integration of rseqc tool
 0.12.1    * indexing was always set to True in the config after 0.9.16 update. 
 0.12.0    * BUG fix: Switch mark_duplicates correctly beore feature counts
 0.11.0    * rnadiff one factor is simplified
