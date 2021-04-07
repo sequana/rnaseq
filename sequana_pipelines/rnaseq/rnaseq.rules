@@ -162,20 +162,19 @@ if manager.config.general.aligner == "bowtie2":
         bt2_ext = "bt2"
 
     # These two variables are used elsewhere and in the rule below
-    __bowtie2_index_ref__output_done   = genome_directory + f"/bowtie2/{genome_name}.1.{bt2_ext}"
+    __bowtie2_index__output_done   = genome_directory + f"/bowtie2/{genome_name}.1.{bt2_ext}"
     __bowtie2_index__ = genome_directory + f"/bowtie2/{genome_name}"
 
-    if os.path.exists(__bowtie2_index_ref__output_done) and do_indexing is False:
+    if os.path.exists(__bowtie2_index__output_done) and do_indexing is False:
         pass # index exists, no need to do it, everything should be fine
-    elif (os.path.exists(__bowtie2_index_ref__output_done) and do_indexing and force_indexing) or \
-        (os.path.exists(__bowtie2_index_ref__output_done) is False and do_indexing):
-        __bowtie2_index_ref__fasta =            __fasta_file__
-        #__bowtie2_index_ref__output_done   # defined above
-        __bowtie2_index_ref__output_prefix =    genome_directory + f"/bowtie2/{genome_name}"
-        __bowtie2_index_ref__log = "logs/indexing/bowtie2_genome.log"
-        include: bowtie2_index_dynamic("ref")
-    elif os.path.exists(__bowtie2_index_ref__output_done) is False and do_indexing is False:
-        error(msg_error_indexing_notfound.format("bowtie2", __bowtie2_index_ref__output_done))
+    elif (os.path.exists(__bowtie2_index__output_done) and do_indexing and force_indexing) or \
+        (os.path.exists(__bowtie2_index__output_done) is False and do_indexing):
+        __bowtie2_index__fasta =            __fasta_file__
+        __bowtie2_index__output_prefix =    genome_directory + f"/bowtie2/{genome_name}"
+        __bowtie2_index__log = "logs/indexing/bowtie2_genome.log"
+        include: sm.modules['bowtie2_index']
+    elif os.path.exists(__bowtie2_index__output_done) is False and do_indexing is False:
+        error(msg_error_indexing_notfound.format("bowtie2", __bowtie2_index__output_done))
 
 elif manager.config.general.aligner  == "star":
     __star_index__output_done = genome_directory +  "/star/SAindex"
@@ -217,8 +216,15 @@ if not config['fastqc']['skip_fastqc_samples']:
     include: fastqc_dynamic("samples", manager)
     expected_output.extend(expand(__fastqc_samples__output_done, sample=manager.samples))
 
-if manager.config.cutadapt.do:
-    adapter_tool = manager.config.cutadapt.tool_choice
+valid_trimmer = ['cutadapt', 'fastp', 'atropos']
+if manager.config.trimming.software_choice not in valid_trimmer:
+    print(f"Invalid choice for trimming tool. Choose one in {valid_trimmer}")
+    sys.exit(1)
+
+if manager.config.trimming.do is False:
+    __clean_fastq__output = __data__input
+elif manager.config.trimming.software_choice in ["cutadapt", "atropos"]:
+    adapter_tool = manager.config.cutadapt.software_choice
 
     from sequana.adapters import _get_registered_adapters as registered
     from sequana.adapters import get_sequana_adapters
@@ -246,6 +252,7 @@ if manager.config.cutadapt.do:
         __cutadapt__fwd = manager.config.cutadapt.fwd
         __cutadapt__rev = manager.config.cutadapt.rev
 
+        # design and desing adapter deprecated. will be removed soon
         __cutadapt__design = manager.config.cutadapt.design_file
         __cutadapt__design_adapter = manager.config['cutadapt']['adapter_choice']
         __cutadapt__options = manager.config.cutadapt.options
@@ -254,8 +261,16 @@ if manager.config.cutadapt.do:
         __cutadapt__sample = manager.sample
         __clean_fastq__output = __cutadapt__output
         include: sm.modules["cutadapt"]
-else:
-    __clean_fastq__output = __data__input
+elif manager.config.trimming.software_choice == "fastp":
+    __fastp__input_fastq = __data__input
+    __fastp__output = ["{sample}/fastp/{sample}_R1_.fastp.fastq.gz"]
+    if manager.paired:
+        __fastp__output += ["{sample}/fastp/{sample}_R2_.fastp.fastq.gz"]
+    __fastp__output_json = "{sample}/fastp/fastp.json"   # must be named fastp.json
+    __fastp__output_html = "{sample}/fastp/fastp.html"
+    __fastp__log = "{sample}/fastp/{sample}.log"
+    include: sm.modules['fastp']
+    __clean_fastq__output = __fastp__output
 
 
 
@@ -270,9 +285,12 @@ expected_output.extend(expand(__fastqc_filtered__output_done, sample=manager.sam
 
 
 # Decompress fastq.gz file before running bowtie1
-if manager.config.cutadapt.do:
+if manager.config.trimming == 'cutadapt':
     __unpigz_R1__input = manager.getname("cutadapt", "_R1_.cutadapt.fastq.gz")
     __unpigz_R1__output = manager.getname("cutadapt", "_R1_.cutadapt.fastq")
+elif manager.config.trimming == 'fastp':
+    __unpigz_R1__input = "{sample}/fastp/{sample}_R1_.fastp.fastq.gz"
+    __unpigz_R1__output = "{sample}/fastp/{sample}_R1_.fastp.fastq"
 else:
     __unpigz_R1__input = __data__input
     __unpigz_R1__output = manager.getname("cutadapt", "_R1_.cutadapt.fastq")
@@ -319,7 +337,7 @@ if manager.config.general.aligner == "bowtie1":
 elif manager.config.general.aligner == "bowtie2":
     # mapping on ref
     __bowtie2_mapping_ref__input = __clean_fastq__output
-    __bowtie2_mapping_ref__index_done = __bowtie2_index_ref__output_done
+    __bowtie2_mapping_ref__index_done = __bowtie2_index__output_done
     __bowtie2_mapping_ref__sort = manager.getname("bowtie2_mapping_ref", ".sorted.bam")
     __bowtie2_mapping_ref__bam = manager.getname("bowtie2_mapping_ref", ".bam")
     __bowtie2_mapping_ref__logs_err = manager.getname("bowtie2_mapping_ref", ".err")
@@ -374,7 +392,7 @@ if manager.config.general.aligner not in ['salmon']:
 # duplicates can be from PCR or if SR, by pure chance.
 # if Paired, most likely a PCR origin.
 # Mark duplicates
-if config["mark_duplicates"]["do"] and manager.config.general.aligner not in ['salmon']:
+if config["mark_duplicates"]["do"]:
     __mark_duplicates_ref__input   = __add_read_group__output
     __mark_duplicates_ref__output  = manager.getname("mark_duplicates", ".bam")
     __mark_duplicates_ref__metrics = manager.getname("mark_duplicates", ".metrics")
@@ -383,6 +401,8 @@ if config["mark_duplicates"]["do"] and manager.config.general.aligner not in ['s
     include: mark_duplicates_dynamic("ref", manager)
     expected_output.extend(expand(__mark_duplicates_ref__output, sample=manager.samples))
     __final_bam__ = __mark_duplicates_ref__output
+elif manager.config.general.aligner not in ['salmon']:
+    __final_bam__   = __add_read_group__output
 else:
     __final_bam__ = []
 
@@ -625,7 +645,7 @@ if config['rseqc']['do']:
 
 
 # FIXME do we need the mark_duplicates for RNASEQC2 ? is it compulsary ?
-if config["rnaseqc"]["do"]:
+if config["rnaseqc"]["do"] and config['general']['aligner'] != 'salmon':
     __reorderSam__input_sam = __final_bam__
     __reorderSam__input_genome = __fasta_file__
     __reorderSam__logs = manager.getname("reorderSam", ".logs")
@@ -644,7 +664,7 @@ if config["rnaseqc"]["do"]:
     #
     __gtf_file__ = config['rnaseqc']['gtf_file'].strip()
 
-    # Could be a local file. If provided, 
+    # Could be a local file. If provided,
     if __gtf_file__:
         if os.path.exists(__gtf_file__) is False:
             logger.error(f"{__gtf_file__} not found")
@@ -703,15 +723,15 @@ localrules: conda, rulegraph
 
 onsuccess:
     # Create plots about stats
-    from sequana import logger
+    from sequana import logger as log
     from sequana.gff3 import GFF3
     from sequana.pipelines_common import get_pipeline_location as getpath
     from sequana import BAM
     from sequana.modules_report.summary import SummaryModule2
 
     import colorlog
-    logger = colorlog.getLogger("sequana.rnaseq")
-    logger.setLevel("INFO")
+    log = colorlog.getLogger("sequana.rnaseq")
+    log.setLevel("INFO")
     manager.teardown(
         extra_files_to_remove=["requirements.txt"],
         extra_dirs_to_remove=[".genomes", "tmp", "logs"])
@@ -774,7 +794,7 @@ samplename_6,condition_name_2
     intro = f"""
     <h2>Overview</h2>
     <p>
-    The RNA-seq pipeline maps the reads on the provided reference (called <i>{__fasta_file__.split("/")[-1]}</i>). Features counts were extracted and are available in the <a href="./rnadiff/feature_counts">feature counts</a> directory; those files are entry points for differential gene expression analysis. The differential analysis, if performed with Sequana, should be available in the <a href="rnadiff/rnadiff.html">DGE analysis directory</a>. 
+    The RNA-seq pipeline maps the reads on the provided reference (called <i>{__fasta_file__.split("/")[-1]}</i>). Features counts were extracted and are available in the <a href="./rnadiff/feature_counts">feature counts</a> directory; those files are entry points for differential gene expression analysis. The differential analysis, if performed, should be available in the <a href="rnadiff/rnadiff.html">DGE analysis directory</a>. In addition, if enrichment was performed (GO or Kegg pathways), it should be available in the <a href="rnadiff/enrichment/summary.html"></a> directory.
     </p>
 
     <p>A <a href="multiqc/multiqc_report.html">multiqc report</a> is available, where various QC and mapping quality plots can be visualised.
@@ -794,27 +814,40 @@ samplename_6,condition_name_2
 
         image = SummaryModule2.png_to_embedded_png("dummy", "outputs/strand_summary.png", 
                      style="width:80%; height:40%")
-        intro+=image
-    
-
+        intro += image
 
     try:
+        intro += """<h2>ribosomal / contaminant content</h2>"""
         df = pd.read_csv("multiqc/multiqc_data/multiqc_bowtie1.txt", sep='\t')
-        rRNA = df.reads_aligned_percentage.mean()
-        if rRNA < 10:   
-            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is reasonable</p>"
+
+        if "reads_aligned_percentage" in df.columns:
+            rRNA = int(df.reads_aligned_percentage.mean()*100)/100
+        else:
+            rRNA = int((100 - df.not_aligned_percentage.mean())*100)/100
+        if rRNA < 10:
+            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is low. "
         elif rRNA < 20:
-            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is moderately low</p>"
+            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is moderately low. "
         elif rRNA > 20:
-            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is relatively high</p>"
+            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is relatively high. "
         elif rRNA > 50:
-            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is very high high</p>"
-    except:
+            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is very high high. "
+
+        intro += """Please see the <a href="multiqc/multiqc_report.html#bowtie1">section of the multiqc report</a> for details. Here below</p>"""
+
+        from sequana.multiqc.plots import Bowtie1Reader
+        if os.path.exists("multiqc/multiqc_data/multiqc_bowtie1.txt"):
+            br = Bowtie1Reader("multiqc/multiqc_data/multiqc_bowtie1.txt")
+            fig = br.plot_bar(html_code=True)
+            from plotly import offline
+            intro += offline.plot(fig, output_type="div", include_plotlyjs=True)
+    except Exception as err:
+        print(err)
         pass
 
     intro+=    """
     <p>
-    Differential gene expression analysis is not performed automatically with this pipeline. However, information, feature counts, and other materials can be found in the directory ./randiff. Most probably an analysis is present. If so, please open the report <a href="rnadiff/rnadiff.html">rnadiff</a>.
+    Differential gene expression analysis is not performed automatically with this pipeline. However, information, feature counts, and other materials can be found in the directory ./rnadiff. Most probably an analysis is present. If so, please open the report <a href="rnadiff/rnadiff.html">rnadiff</a>.
     </p>
 
     """

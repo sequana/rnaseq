@@ -57,12 +57,48 @@ mapping:
             "flowcell":
                 type: str
 
+    "trimming":
+      type: map
+      mapping:
+        "do":
+          type: bool
+          required: True
+        "software_choice":
+          type: str
+          enum: [cutadapt,atropos,fastp]
+
+    "fastp":
+      type: map
+      mapping:
+        "options":
+            type: str
+
+        "minimum_length":
+            required: True
+            type: int
+        "fwd":
+            type: str
+            required: False
+        "rev":
+            type: str
+            required: False
+        "quality":
+            type: int
+            range: {max: 40, min: 0}
+            required: False
+        "threads":
+            type: int
+            required: True
+            range: { min: 1 }
+        "disable_adapter_trimming":
+                type: bool
+        "disable_quality_filtering":
+                type: bool
+
+
     "cutadapt":
         type: map
         mapping:
-            "do":
-                type: bool
-                required: True
             "tool_choice":
                 type: str
                 enum: [cutadapt,atropos]
@@ -241,9 +277,3 @@ mapping:
                 required: True
                 range: { min: 1}
 
-    'rnadiff':
-        type: map
-        mapping:
-            "mode":
-                type: str
-                enum: [ one_factor, GLM ]

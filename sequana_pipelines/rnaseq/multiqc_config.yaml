@@ -73,7 +73,8 @@ extra_fn_clean_exts:
 fn_ignore_files:
     - .DS_Store
 fn_ignore_dirs:
-    - annoying_dirname
+    - .sequana
+    - .snakemake
 fn_ignore_paths:
     - '*/path/to/*_files/'
     - "*/feature_counts_*/"

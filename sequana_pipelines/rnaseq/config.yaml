@@ -88,9 +88,8 @@ fastqc:
 #
 # :Parameters:
 #
-# - adapter_type: can only be one of PCRFree, Nextera, Rubicon, TruSeq.
-#   Only used if design_file is provided.
-# - design_file: a valid CSV file with mapping of index and sample name
+# - adapter_type: DEPRECATED
+# - design_file: DEPRECATED
 # - fwd: a string or file (prefixed with *file:*)
 # - m: 20 means discard trimmed reads that are shorter than 20.
 #         must be > 0
@@ -112,9 +111,10 @@ fastqc:
 #
 #   ref: http://cutadapt.readthedocs.io/
 # adapter_choice__ = ["", "PCRFree", "Rubicon", "Nextera", "TruSeq"]
-# tool_choice__ = ["atropos", "cutadapt", "clean_ngs"]
+# tool_choice__ = ["atropos", "cutadapt"]
+#
+# trim-n trims Ns at the end of the read
 cutadapt:
-    do: true
     tool_choice: cutadapt
     adapter_choice: ''
     design_file: ''
@@ -126,6 +126,46 @@ cutadapt:
     quality: 30                 # {"range": [0,40]}
     threads: 4
 
+
+#############################################################################
+# -Q should disable the quality filter
+#
+# Quality filtering only limits the N base number (-n, --n_base_limit) 
+# meaning if 5 Ns are found, the read is discarded, 
+# -q is the quality value se to Q15 to be qualified; If more than 40% of bases
+# are unqualified, the read is discarded.
+# You can also filter reads by average quality score using -e QUAL_score
+#
+# minimum length is set to 15 by default
+#
+# Adapter trimming is set by default. Can be disable with -A
+# For adapters, this is automatic but you can be specific using 
+# --adapter_sequence for read1, and --adapter_sequence_r2 for read2.
+#
+# --cut_tail  move a sliding window from tail (3') to front, drop the bases 
+# in the window if its mean quality is below cut_mean_quality, stop otherwise. 
+#  Use cut_tail_window_size to set the widnow size (default 4)), and 
+#  cut_tail_mean_quality to set the mean quality threshold (default 20)
+
+# useful options
+# --disable_adapter_trimming
+# --disable_quality_filtering.
+# -n 5 (minimum number of Ns required to discard a read)
+fastp:
+  options: "  --cut_tail "
+  minimum_length: 20
+  rev: ''
+  fwd: ''
+  quality: 20
+  threads: 4
+  disable_adapter_trimming: false
+  disable_quality_filtering: false
+
+#######################################################
+# sofware__choice = ["atropos", "cutadapt", "fastp"]
+trimming:
+  software_choice: 'fastp'
+  do: true
 
 #############################################################################
 # bowtie1_mapping_rna used to align reads against ribosomal RNA
@@ -337,17 +377,4 @@ multiqc:
     options: -f  -x *_init_* -x *left_kept_reads* -x *fastqc_samples* -e htseq -e slamdunk
     output_directory: multiqc
     config_file: multiqc_config.yaml
-
-
-##############################################################################
-# RNADiff analysis
-#
-# :Parameters:
-#
-# - mode: one_factor or GLM accepted
-#
-rnadiff:
-    mode: one_factor
-
-
 
