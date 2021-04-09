@@ -60,7 +60,6 @@ You can install most of the tools using `damona <https://damona.readthedocs.io>`
     damona create --name sequana_tools
     damona activate sequana_tools
     damona install sequana_tools
-    damona install salmon
 
 Or use the conda.yaml file available in this repository. If you start a new
 environment from scratch, those commands will create the environment and install
