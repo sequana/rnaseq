@@ -1,4 +1,4 @@
-This is is the **rnaseq** pipeline from the `Sequana <https://sequana.readthedocs.org>`_ projet
+This is is the **rnaseq** pipeline from the `Sequana <https://sequana.readthedocs.org>`_ project
 
 :Overview: RNASeq analysis from raw data to feature counts
 :Input: A set of Fastq Files and genome reference and annotation.
