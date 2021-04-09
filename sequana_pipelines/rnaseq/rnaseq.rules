@@ -566,16 +566,10 @@ rule merge_feature_counts:
     input: __guess_strandness__output
     output: "rnadiff/all_features.out"
     run:
-        def create_single_feature_file():
-            import glob
-            import pandas as pd
-            filenames = glob.glob("rnadiff/feature_counts/*_feature.out")
-            df = pd.read_csv(filenames[0], sep="\t", skiprows=1)
-            for filename in filenames[1:]:
-                other_df = pd.read_csv(filename, sep="\t", skiprows=1)
-                df = pd.merge(df, other_df)
-            df.to_csv("rnadiff/all_features.out",sep="\t", index=False)
-        create_single_feature_file()
+        from sequana.featurecounts import FeatureCountMerger
+        fcm = FeatureCountMerger(fof=input)
+        fcm.to_tsv(output[0])
+
 
 
 if config['rseqc']['do']:
