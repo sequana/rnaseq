@@ -56,11 +56,6 @@ class Options(argparse.ArgumentParser):
         pipeline_group.add_argument("--aligner", dest="aligner", required=True,
             choices=['bowtie2', 'bowtie1', 'star', "salmon"],
             help= "a mapper in bowtie, bowtie2, star")
-        pipeline_group.add_argument("--force-indexing", action="store_true",
-            default=False,
-            help="""If indexing files exists already, but you wish to
-                create them again, use this option. Note that you will need
-                permissions for that""")
         pipeline_group.add_argument("--rRNA-feature",
             default="rRNA",
             help="""Feature name corresponding to the rRNA to be identified in
@@ -168,38 +163,6 @@ def main(args=None):
             logger.critical("""Could not find {}. You must have the genome sequence in fasta with the extension .fa named after the genome directory.""".format(fasta))
             sys.exit()
 
-        # Do we need the indexing ?
-        if options.aligner == "bowtie2":
-            if os.path.exists(prefix + f"/bowtie2/{genome_name}.rev.1.bt2"):
-                logger.info("Indexing found for {}.".format("bowtie2"))
-                cfg.general.indexing = False
-            else:
-                logger.info("Indexing not found for {}. Planned to be run".format("bowtie2"))
-                cfg.general.indexing = True
-        elif options.aligner == "star":
-            if os.path.exists(prefix + f"/star/SAindex"):
-                logger.info("Indexing found for {}.".format("STAR"))
-                cfg.general.indexing = False
-            else:
-                logger.info("Indexing not found for {}. Planned to be run".format("STAR"))
-                cfg.general.indexing = True
-        elif options.aligner == "bowtie1":
-            if os.path.exists(prefix + f"/bowtie1/{genome_name}.rev.1.ebwt"):
-                logger.info("Indexing found for {}.".format("bowtie1"))
-                cfg.general.indexing = False
-            else:
-                logger.info("Indexing not found for {}. Planned to be run".format("bowtie1"))
-                cfg.general.indexing = True
-        elif options.aligner == "salmon":
-            if os.path.exists(cfg.general.genome_directory + "/salmon/salmon.done"):
-                logger.info("Indexing found for {}.".format("salmon"))
-                cfg.general.indexing = False
-            else:
-                logger.info("Indexing not found for {}. Planned to be run".format("salmon"))
-                cfg.general.indexing = True
-
-        #options.do_indexing
-        cfg.general.force_indexing = options.force_indexing
         cfg.general.rRNA_feature = options.rRNA_feature
         cfg.general.contaminant_file = options.contaminant_file
 

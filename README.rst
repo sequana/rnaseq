@@ -130,6 +130,12 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.14.0    * Allow the aligners to have dedicated index for each version in the
+            same genome directory.
+          * Ribosomal is now estimated on the first 100,000 reads to speed up
+            analysis
+          * --indexing and --force-indexing  options not required anymore. 
+            Indexing will be done automatically and not redone if present.
 0.13.0    * Major update to use the new sequana version and the RNADiff tools.
           * remove fastq_screen. One can use sequana_multitax for taxonomic
             content and contamination.

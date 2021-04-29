@@ -15,6 +15,8 @@
 import glob
 import os
 import shutil
+import subprocess
+
 
 # Some sequana related tools
 import sequana
@@ -38,9 +40,7 @@ def error(msg):
 exec(open(sequana.modules["bowtie1_mapping_dynamic"], "r").read())
 exec(open(sequana.modules["bowtie1_index_dynamic"], "r").read())
 exec(open(sequana.modules["bowtie2_mapping_dynamic"], "r").read())
-exec(open(sequana.modules["bowtie2_index_dynamic"], "r").read())
 exec(open(sequana.modules["fastqc_dynamic"], "r").read())
-exec(open(sequana.modules["dynamic_unpigz"], "r").read())
 exec(open(sequana.modules["mark_duplicates_dynamic"], "r").read())
 exec(open(sequana.modules["feature_counts_dynamic"], "r").read())
 
@@ -51,17 +51,17 @@ __data__input = manager.getrawdata()
 if config['general']['aligner'] == 'salmon':
     __strand__summary = None
     rule rnaseq:
-        input: 
-            "multiqc/multiqc_report.html", 
-            ".sequana/rulegraph.svg", 
+        input:
+            "multiqc/multiqc_report.html",
+            ".sequana/rulegraph.svg",
             "rnadiff/all_features.out"
 else:
     __strand__summary = "outputs/strand_summary.csv"
     rule rnaseq:
-        input: 
-            "multiqc/multiqc_report.html", 
-            ".sequana/rulegraph.svg", 
-            __strand__summary, 
+        input:
+            "multiqc/multiqc_report.html",
+            ".sequana/rulegraph.svg",
+            __strand__summary,
             "rnadiff/all_features.out"
 
 
@@ -94,35 +94,27 @@ include: sm.modules["create_sequence_dictionary"]
 expected_output.extend([__create_sequence_dictionary__output])
 
 
-do_indexing = manager.config.general.indexing
-force_indexing = manager.config.general.force_indexing
 # =========================================================================== bowtie1
 
-msg_error_indexing_exists = "Indexing file for {} exists already ({}). "+\
-    "Set general::indexing to False or general::force_indexing to True "+\
-    "in the config file"
-msg_error_indexing_notfound = "Indexing file for {} not found ({}). "+\
-    "Set general::indexing to True in the config file"
-
 if manager.config.general.aligner == "bowtie1":
-    __bowtie1_index_ref__output_done   = genome_directory + f"/bowtie1/{genome_name}.1.ebwt"
-    __bowtie1_index__ = genome_directory + f"/bowtie1/{genome_name}"
+    try:
+        p = subprocess.Popen(['bowtie', '--version'], stdout=subprocess.PIPE)
+        p.wait()
+        stdout = p.stdout.read().decode().split("\n")[-1]
+    except Exception:  # various type of exception may occur here
+         logger.warning(f"Could not determine bowtie2 version. Index will be stored in {genome_directory}/bowtie2/")
 
-    if os.path.exists(__bowtie1_index_ref__output_done) and do_indexing is False:
+         bowtie1_version = ""
+    __bowtie1_index_ref__output_done   = genome_directory + f"/bowtie1{bowtie1_version}/{genome_name}.1.ebwt"
+    __bowtie1_index__ = genome_directory + f"/bowtie1{bowtie1_version}/{genome_name}"
+
+    if os.path.exists(__bowtie1_index_ref__output_done):
         pass # index exists, no need to do it, everything should be fine
-    elif (os.path.exists(__bowtie1_index_ref__output_done) and do_indexing and force_indexing) or \
-        (os.path.exists(__bowtie1_index_ref__output_done) is False and do_indexing):
-        # if the file does not exists and we ask for the indexing
-        # OR if the file exists but we want to overwrite it 
+    else:
         __bowtie1_index_ref__fasta         = __fasta_file__
-        #__bowtie1_index_ref__output_done   # defined above
-        __bowtie1_index_ref__output_prefix =    genome_directory + f"/bowtie1/{genome_name}"
+        __bowtie1_index_ref__output_prefix =    genome_directory + f"/bowtie1{bowtie1_version}/{genome_name}"
         __bowtie1_index_ref__log           = "logs/indexing/bowtie1_genome.log"
         include: bowtie1_index_dynamic("ref")
-    #elif os.path.exists(__bowtie1_index_ref__output_done) and do_indexing and force_indexing is False:
-    #    error(msg_error_indexing_exists.format("bowtie1", __bowtie1_index_ref__output_done))
-    elif os.path.exists(__bowtie1_index_ref__output_done) is False and do_indexing is False:
-        error(msg_error_indexing_notfound.format("bowtie1", __bowtie1_index_ref__output_done))
 
 if manager.config.general.contaminant_file and manager.config.general.rRNA_feature:
     error("Either set contaminant_file or rRNA_feature in the config file, not both.")
@@ -162,47 +154,70 @@ if manager.config.general.aligner == "bowtie2":
         bt2_ext = "bt2"
 
     # These two variables are used elsewhere and in the rule below
-    __bowtie2_index__output_done   = genome_directory + f"/bowtie2/{genome_name}.1.{bt2_ext}"
-    __bowtie2_index__ = genome_directory + f"/bowtie2/{genome_name}"
+    # Index creatin may differ from one version to another and one may want to
+    # keep track of the index and its version. We try to retrieve the version
+    # and if succesful, we will add the version as a suffix, otherwise just the
+    # name of bowtie2
 
-    if os.path.exists(__bowtie2_index__output_done) and do_indexing is False:
+    # tested on version 2.4.2
+    try:
+        p = subprocess.Popen(['bowtie2'], stderr=subprocess.PIPE)
+        p.wait()
+        stderr = p.stderr.read().decode().split("\n")
+        hits = [line for line in stderr if "version" in line and 'Bowtie' in line]
+        bowtie2_version = "_" + hits[0].split("version")[1].split()[0].strip()
+    except Exception:  # various type of exception may occur here
+         logger.warning(f"Could not determine bowtie2 version. Index will be stored in {genome_directory}/bowtie2/")
+         bowtie2_version = ""
+    __bowtie2_index__output_done   = genome_directory + f"/bowtie2{bowtie2_version}/{genome_name}.1.{bt2_ext}"
+    __bowtie2_index__ = genome_directory + f"/bowtie2{bowtie2_version}/{genome_name}"
+
+    if os.path.exists(__bowtie2_index__output_done):
         pass # index exists, no need to do it, everything should be fine
-    elif (os.path.exists(__bowtie2_index__output_done) and do_indexing and force_indexing) or \
-        (os.path.exists(__bowtie2_index__output_done) is False and do_indexing):
+    else:
         __bowtie2_index__fasta =            __fasta_file__
-        __bowtie2_index__output_prefix =    genome_directory + f"/bowtie2/{genome_name}"
+        __bowtie2_index__output_prefix =    genome_directory + f"/bowtie2{bowtie2_version}/{genome_name}"
         __bowtie2_index__log = "logs/indexing/bowtie2_genome.log"
         include: sm.modules['bowtie2_index']
-    elif os.path.exists(__bowtie2_index__output_done) is False and do_indexing is False:
-        error(msg_error_indexing_notfound.format("bowtie2", __bowtie2_index__output_done))
 
 elif manager.config.general.aligner  == "star":
-    __star_index__output_done = genome_directory +  "/star/SAindex"
-    __star_dir__ = genome_directory + "/star"
-    if os.path.exists(__star_index__output_done) and do_indexing is False:
+    # tested on version 2.7.8a
+    try:
+        p = subprocess.Popen(['STAR', '--version'], stdout=subprocess.PIPE)
+        p.wait()
+        star_version = p.stdout.read().decode().strip()
+    except Exception:  # various type of exception may occur here
+         logger.warning(f"Could not determine STAR version. Index will be stored in {genome_directory}/star/")
+         star_version = ""
+
+    __star_index__output_done = genome_directory +  f"/star{star_version}/SAindex"
+    __star_dir__ = genome_directory + f"/star{star_version}"
+    if os.path.exists(__star_index__output_done):
         pass # index exists, no need to do it, everything should be fine
-    elif (os.path.exists(__star_index__output_done) and do_indexing and force_indexing) or \
-        (os.path.exists(__star_index__output_done) is False and do_indexing):
+    else:
         __star_index__fasta =  __fasta_file__
-        __star_index__output_dir =  genome_directory + "/star"
+        __star_index__output_dir =  genome_directory + f"/star{star_version}"
         __star_index__log = "logs/indexing/star_genome.log"
         include: sm.modules["star_index"]
-    elif os.path.exists(__star_index__output_done) is False and do_indexing is False:
-        error(msg_error_indexing_notfound.format("star", __star_index__output_done))
 
 elif manager.config.general.aligner == "salmon":
-    __salmon_index__output_done = genome_directory + "/salmon/salmon.done"
-    __salmon_index__genome_dir =  genome_directory + "/salmon"
-    if os.path.exists(__salmon_index__output_done) and do_indexing is False:
+    #tested on salmon 1.4.0
+    try:
+        p = subprocess.Popen(['salmon', '--version'], stdout=subprocess.PIPE)
+        p.wait()
+        salmon_version = p.stdout.read().decode().split()[-1]
+    except Exception:  # various type of exception may occur here
+         logger.warning(f"Could not determine salmon version. Index will be stored in {genome_directory}/salmon/")
+         salmon_version = ""
+    __salmon_index__output_done = genome_directory + f"/salmon{salmon_version}/salmon.done"
+    __salmon_index__genome_dir =  genome_directory + f"/salmon{salmon_version}"
+    if os.path.exists(__salmon_index__output_done):
         pass # index exists, no need to do it, everything should be fine
-    elif (os.path.exists(__salmon_index__output_done) and do_indexing and force_indexing) or \
-        (os.path.exists(__salmon_index__output_done) is False and do_indexing):
+    else:
         __salmon_index__fasta_input =  __fasta_file__
         __salmon_index__gff_input =  __gff_file__
         __salmon_index__log = "logs/indexing/salmon.log"
         include: sm.modules["salmon_index"]
-    elif os.path.exists(__salmon_index__output_done) is False and do_indexing is False:
-        error(msg_error_indexing_notfound.format("salmon", __salmon_index__output_done))
 
 
 
@@ -273,7 +288,6 @@ elif manager.config.trimming.software_choice == "fastp":
     __clean_fastq__output = __fastp__output
 
 
-
 # FASTQC on input data set
 __fastqc_filtered__input_fastq = __clean_fastq__output
 __fastqc_filtered__output_done = manager.getname("fastqc_filtered", ".done")
@@ -283,21 +297,39 @@ include: fastqc_dynamic("filtered", manager)
 expected_output.extend(expand(__fastqc_filtered__output_done, sample=manager.samples))
 
 
-
 # Decompress fastq.gz file before running bowtie1
-if manager.config.trimming == 'cutadapt':
+if manager.config.trimming.software_choice == 'cutadapt':
     __unpigz_R1__input = manager.getname("cutadapt", "_R1_.cutadapt.fastq.gz")
     __unpigz_R1__output = manager.getname("cutadapt", "_R1_.cutadapt.fastq")
-elif manager.config.trimming == 'fastp':
+elif manager.config.trimming.software_choice == 'fastp':
     __unpigz_R1__input = "{sample}/fastp/{sample}_R1_.fastp.fastq.gz"
     __unpigz_R1__output = "{sample}/fastp/{sample}_R1_.fastp.fastq"
 else:
     __unpigz_R1__input = __data__input
-    __unpigz_R1__output = manager.getname("cutadapt", "_R1_.cutadapt.fastq")
+    __unpigz_R1__output = manager.getname("cutadapt", "_R1_.fastq")
 
 
-include: dynamic_unpigz("R1", manager)
-__unpigz__output = [__unpigz_R1__output]
+# make sure it is a multiple of 4 (fastq input)
+if int(config['bowtie1_mapping_rna']['nreads']) != -1:
+    extra = int(config['bowtie1_mapping_rna']['nreads']) % 4
+    config['bowtie1_mapping_rna']['nreads'] -= extra
+
+rule sample_rRNA:
+    input: __unpigz_R1__input
+    output: temp(__unpigz_R1__output)
+    threads: 4
+    params:
+        nreads = int(config['bowtie1_mapping_rna']['nreads'])
+    shell:
+        """
+        set +o pipefail
+        if [[ {params.nreads} == -1 ]]; then
+            unpigz -p {threads} -fk --stdout {input[0]} > {output[0]}
+        else
+            unpigz -p {threads} -fk --stdout {input[0]} | head -n {params.nreads} > {output[0]}
+        fi
+        """
+
 """With paired data, alignement on rRNA leads to 0% alignment if we use R1 and
 R2. If we use R1 only, the percentage is >0. First reason is that reads are not
 trimmed properly. In truth, bowtie2 supports local alignments which means it can
@@ -309,8 +341,9 @@ v0.9.14.
 
 
 if manager.config.general.rRNA_feature or manager.config.general.contaminant_file:
-    # rRNA
-    __bowtie1_mapping_rna__input = __unpigz__output
+    # rRNA. Note the list here below because the rule expects a list (in case it
+    # is paired
+    __bowtie1_mapping_rna__input = [__unpigz_R1__output]
     __bowtie1_mapping_rna__index_done = __bowtie1_index_rna__output_done
     __bowtie1_mapping_rna__bam = manager.getname("bowtie1_mapping_rna", ".bam")
     __bowtie1_mapping_rna__sort = manager.getname("bowtie1_mapping_rna", ".sorted.bam")
@@ -324,7 +357,7 @@ if manager.config.general.rRNA_feature or manager.config.general.contaminant_fil
 
 if manager.config.general.aligner == "bowtie1":
     # Mapper bowtie 1
-    __bowtie1_mapping_ref__input = __unpigz__output
+    __bowtie1_mapping_ref__input = __unpigz_R1__output
     __bowtie1_mapping_ref__index_done = __bowtie1_index_ref__output_done
     __bowtie1_mapping_ref__bam = manager.getname("bowtie1_mapping_ref", ".bam")
     __bowtie1_mapping_ref__sort = manager.getname("bowtie1_mapping_ref", ".sorted.bam")
@@ -732,6 +765,7 @@ onsuccess:
     manager.clean_multiqc(__multiqc__output)
 
 
+
     # ------------------------------------------- RNADIFF
     # 1. save data for the RNADiff analysis
     from sequana.featurecounts import FeatureCount
@@ -781,8 +815,11 @@ samplename_6,condition_name_2
         names = {0: 'stranded', 1: 'unstranded', 2: 'reversely stranded'}
         guess = names[guess]
     except Exception as err:
-        logger.warning(err)
-        guess = "?"
+        if config['general']['aligner'] == "salmon":
+            logger.info("Salmon aligner used. No strandness information available")
+        else:
+            logger.warning(err)
+            guess = "?"
 
 
     intro = f"""
@@ -806,7 +843,7 @@ samplename_6,condition_name_2
         else:
             intro += "Strandness was guessed from the data. </p>"
 
-        image = SummaryModule2.png_to_embedded_png("dummy", "outputs/strand_summary.png", 
+        image = SummaryModule2.png_to_embedded_png("strand", "outputs/strand_summary.png", 
                      style="width:80%; height:40%")
         intro += image
 
@@ -848,7 +885,7 @@ samplename_6,condition_name_2
     s = SummaryModule2(data, intro)
 
     shell("chmod -R g+w .")
-    shell("rm -rf rulegraph")
+    #shell("rm -rf rulegraph")
 onerror:
     print("An error occurred. See message above.")
 

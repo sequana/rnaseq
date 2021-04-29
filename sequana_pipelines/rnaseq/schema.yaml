@@ -37,10 +37,6 @@ mapping:
                 type: str
             "rRNA_feature":
                 type: str
-            "indexing":
-                type: bool
-            "force_indexing":
-                type: bool
             "custom_gff":
                 type: str
 
@@ -222,17 +218,21 @@ mapping:
                 type: int
                 required: True
                 range: { min: 1, max: 8 }
+
     'bowtie1_mapping_rna':
         type: map
         mapping:
-            "do":
-                type: bool
             "options":
                 type: str
             "threads":
                 type: int
                 required: True
                 range: { min: 1}
+            "nreads":
+                type: int
+                required: True
+                range: { min: -1}
+
     'igvtools':
         type: map
         mapping:

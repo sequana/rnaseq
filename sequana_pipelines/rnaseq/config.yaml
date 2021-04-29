@@ -23,19 +23,11 @@ input_pattern: '*fastq.gz'
 #   genome_directory)
 # - rRNA_feature: if rRNA_contaminant is not provided, ribosomal RNA will be extract
 #     from GFF using this feature name. It must be found. 
-# - indexing: if indexing is set to True, the index for bowtie1 will be done as
-#   well as the indexing of the aligner provided. If the files exists already, not
-#   indexing is performed. If you want to force the index building despite the
-#   presence of the index files, then, use the force_indexing parameter and set
-#   it to True. Indexing is followed by force_indexing to make sure we do not
-#   erase the index files, which may be large.
 general:
-    aligner: bowtie2
-    genome_directory: /home/cokelaer/Work/github/sequana_pipelines/rnaseq/sequana_pipelines/rnaseq/data/Lepto
+    aligner: salmon
+    genome_directory: Lepto
     contaminant_file: ''
     rRNA_feature: rRNA
-    indexing: false
-    force_indexing: false
     custom_gff: ''
 
 
@@ -152,20 +144,20 @@ cutadapt:
 # --disable_quality_filtering.
 # -n 5 (minimum number of Ns required to discard a read)
 fastp:
-  options: "  --cut_tail "
-  minimum_length: 20
-  rev: ''
-  fwd: ''
-  quality: 20
-  threads: 4
-  disable_adapter_trimming: false
-  disable_quality_filtering: false
+    options: --cut_tail
+    minimum_length: 20
+    rev: ''
+    fwd: ''
+    quality: 15
+    threads: 4
+    disable_adapter_trimming: false
+    disable_quality_filtering: false
 
 #######################################################
 # sofware__choice = ["atropos", "cutadapt", "fastp"]
 trimming:
-  software_choice: 'fastp'
-  do: true
+    software_choice: fastp
+    do: true
 
 #############################################################################
 # bowtie1_mapping_rna used to align reads against ribosomal RNA
@@ -175,12 +167,14 @@ trimming:
 # - do: if unchecked, this rule is ignored
 # - options: any options recognised by bowtie1 tool
 # - threads: number of threads to be used
-#
+# - nreads: no need to analyse all data to estimate the ribosomal content. 
+#   analyse 100,000 reads by default. Set to -1 to ignore and analyse all data
 bowtie1_mapping_rna:
     # remove in v1.20 and ste automatically to on if rRNA provided
     # do: true
     options: ''
     threads: 4
+    nreads: 100000
 
 #############################################################################
 # star_mapping used to align reads against genome file
@@ -299,7 +293,7 @@ feature_counts:
 #                      needed for including single-end and orphan reads.
 # - threads: number of threads to be used
 coverage:
-    do: true
+    do: false
     binSize: 10
     genomeSize: 2150570000  ##mm10
     extendReads: 65
@@ -333,7 +327,7 @@ igvtools:
 # - tmpdir: write tempory file on this directory (default TMP_DIR=/tmp/, but could be "TMP_DIR=/local/scratch/")
 #
 mark_duplicates:
-    do: true
+    do: false
     remove: false ## may be True
     tmpdir: ./tmp/
     threads: 4
@@ -353,14 +347,14 @@ mark_duplicates:
 #            reference fasta.
 # - options: any options recognised by RNA-seQC tool
 rnaseqc:
-    do: true
-    gtf_file: 'lepto.gtf'
+    do: false
+    gtf_file: ''
     options: --coverage
 
 # if be_file not provided, try to create one on the fly
 rseqc:
-    do: true
-    bed_file: 
+    do: false
+    bed_file: ''
 
 
 #############################################################################
@@ -374,7 +368,8 @@ rseqc:
 # - config_file: by default, we use sequana RNA-seq multiqc_config file. 
 #       If you want your own multiqc, fill this entry
 multiqc:
-    options: -f  -x *_init_* -x *left_kept_reads* -x *fastqc_samples* -e htseq -e slamdunk
+    options: -f  -x *_init_* -x *left_kept_reads* -x *fastqc_samples* -e htseq -e
+        slamdunk
     output_directory: multiqc
     config_file: multiqc_config.yaml
 
