@@ -241,19 +241,8 @@ if manager.config.trimming.do is False:
 elif manager.config.trimming.software_choice in ["cutadapt", "atropos"]:
     adapter_tool = manager.config.cutadapt.software_choice
 
-    from sequana.adapters import _get_registered_adapters as registered
-    from sequana.adapters import get_sequana_adapters
-
-    # Users may provide TruSeq, Nextera, PCRFree or other registered adapters
     fwd = manager.config.cutadapt.fwd
-    if isinstance(fwd, str) and fwd in registered():
-        filename = "file:"+ get_sequana_adapters(fwd, "fwd")
-        manager.config.cutadapt.fwd = filename
-
     rev = manager.config.cutadapt.rev
-    if isinstance(rev, str) and rev in registered():
-        filename = "file:"+ get_sequana_adapters(rev, "revcomp")
-        manager.config.cutadapt.rev = filename
 
     if adapter_tool in ["cutadapt", "atropos"]:
         adapter_tool = "cutadapt"
@@ -267,9 +256,6 @@ elif manager.config.trimming.software_choice in ["cutadapt", "atropos"]:
         __cutadapt__fwd = manager.config.cutadapt.fwd
         __cutadapt__rev = manager.config.cutadapt.rev
 
-        # design and desing adapter deprecated. will be removed soon
-        __cutadapt__design = manager.config.cutadapt.design_file
-        __cutadapt__design_adapter = manager.config['cutadapt']['adapter_choice']
         __cutadapt__options = manager.config.cutadapt.options
         __cutadapt__mode = manager.config.cutadapt.mode
         __cutadapt__log = "%s/logs/cutadapt/cutadapt.txt" % manager.sample
