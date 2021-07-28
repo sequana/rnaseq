@@ -166,9 +166,8 @@ def main(args=None):
         cfg.general.rRNA_feature = options.rRNA_feature
         cfg.general.contaminant_file = options.contaminant_file
 
-        if options.rRNA_feature and options.contaminant_file:
-            logger.warning("You are using --contaminant_file so --rRNA-feature will be ignored (we search for contaminant in the input file; not rRNA in the gff file")
-            sys.exit(1)
+        if options.rRNA_feature and options.contaminant_file
+            logger.warning("You are using --contaminant-file so --rRNA-feature will be ignored (we search for contaminant in the input file; not rRNA in the gff file")
 
         # --------------------------------------------------------- trimming
         cfg.trimming.software_choice = options.trimming_software_choice
