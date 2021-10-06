@@ -1,5 +1,5 @@
 #
-#  Copyright (c) 2016- Sequana Dev Team (https://sequana.readthedocs.io)
+#  Copyright (c) 2016-2021 Sequana Dev Team (https://sequana.readthedocs.io)
 #
 #  The full license is in the LICENSE file, distributed with this software.
 #
@@ -13,64 +13,58 @@ import os
 import shutil
 import subprocess
 
-
-# Some sequana related tools
 import sequana
-from sequana import snaketools as sm
+from sequana_pipetools import snaketools as sm
 import sequana.featurecounts as fc
+from sequana import GFF3
 
-# The main config file
+# ========================================================= The main config file
+#
 configfile: "config.yaml"
 
-# The sequana pipeline manager
+
+# ================================================== The sequana pipeline manager
+#
 manager = sm.PipelineManager("rnaseq", config)
 manager.setup(globals(), mode="warning")
+config = manager.config
 
 
-def error(msg):
-    from sequana.pipelines_common import error as err
-    err(msg, "rnaseq")
-
-
-# Generic include of some dynamic modules
-exec(open(sequana.modules["bowtie1_mapping_dynamic"], "r").read())
-exec(open(sequana.modules["bowtie1_index_dynamic"], "r").read())
-exec(open(sequana.modules["bowtie2_mapping_dynamic"], "r").read())
-exec(open(sequana.modules["fastqc_dynamic"], "r").read())
-exec(open(sequana.modules["mark_duplicates_dynamic"], "r").read())
-exec(open(sequana.modules["feature_counts_dynamic"], "r").read())
-
-
-__data__input = manager.getrawdata()
-
+# ========================================= Define output of the pipeline
+#
+manager.globals = {}
 
 if config['general']['aligner'] == 'salmon':
-    __strand__summary = None
+    manager.globals['strand_summary'] = None
     rule rnaseq:
         input:
             "multiqc/multiqc_report.html",
             ".sequana/rulegraph.svg",
-            "rnadiff/all_features.out"
+            "post_analysis/all_features.out"
 else:
-    __strand__summary = "outputs/strand_summary.csv"
+    manager.globals['strand_summary'] = "outputs/strand_summary.csv"
     rule rnaseq:
         input:
             "multiqc/multiqc_report.html",
             ".sequana/rulegraph.svg",
-            __strand__summary,
-            "rnadiff/all_features.out"
+            #manager.globals['strand_summary'],
+            "post_analysis/all_features.out"
 
 
+# ========================================= Define genome directory and inputs
 # Make sure it is absolute
+#
 genome_directory = os.path.abspath(config["general"]["genome_directory"])
 genome_name = genome_directory.rsplit("/", 1)[1]
 
-__prefix_name__ = genome_directory + "/" + genome_name
-__fasta_file__ = __prefix_name__ + ".fa"
-__gff_file__   = __prefix_name__ + ".gff"
+__prefix_name__ = f"{genome_directory}/{genome_name}"
+__fasta_file__ = f"{__prefix_name__}.fa"
+__gff_file__   = f"{__prefix_name__}.gff"
 
 
-# do we have several feature, if so, we need to build a custom GFF file
+# ================================================ Build custom GFF if required
+# If we have several features, we need to build a custom GFF file
+#
 if config['general']['custom_gff']:
     __gff_file__   = config['general']['custom_gff']
 assert os.path.exists(__gff_file__)
@@ -81,72 +75,103 @@ for this in [__fasta_file__, __gff_file__]:
         raise IOError("File {} not found".format(__fasta_file__))
 
 
-# create sequence dict file. Looks like it is used for picard tools.
-# FIXME: see if we cannot simplify this rule and merge it with the picard rule
-__create_sequence_dictionary__reference = __fasta_file__
-__create_sequence_dictionary__output =    __fasta_file__ + ".dict"
-__create_sequence_dictionary__log =       "logs/indexing/create_sequence_dictionary.log"
-include: sm.modules["create_sequence_dictionary"]
-expected_output.extend([__create_sequence_dictionary__output])
-
-
-# =========================================================================== bowtie1
-
-if manager.config.general.aligner == "bowtie1":
-    try:
-        p = subprocess.Popen(['bowtie', '--version'], stdout=subprocess.PIPE)
-        p.wait()
-        stdout = p.stdout.read().decode().split("\n")[-1]
-    except Exception:  # various type of exception may occur here
-         logger.warning(f"Could not determine bowtie2 version. Index will be stored in {genome_directory}/bowtie2/")
-
-         bowtie1_version = ""
-    __bowtie1_index_ref__output_done   = genome_directory + f"/bowtie1{bowtie1_version}/{genome_name}.1.ebwt"
-    __bowtie1_index__ = genome_directory + f"/bowtie1{bowtie1_version}/{genome_name}"
-
-    if os.path.exists(__bowtie1_index_ref__output_done):
-        pass # index exists, no need to do it, everything should be fine
-    else:
-        __bowtie1_index_ref__fasta         = __fasta_file__
-        __bowtie1_index_ref__output_prefix =    genome_directory + f"/bowtie1{bowtie1_version}/{genome_name}"
-        __bowtie1_index_ref__log           = "logs/indexing/bowtie1_genome.log"
-        include: bowtie1_index_dynamic("ref")
-
 if manager.config.general.contaminant_file and manager.config.general.rRNA_feature:
-    error("Either set contaminant_file or rRNA_feature in the config file, not both.")
+    logger.error("Either set contaminant_file or rRNA_feature in the config file, not both.")
+    sys.exit(1)
 
-# =========================================================================== rRNA genome
+
+# ==================================== search for specific sequences as contaminants
+#
 if manager.config.general.contaminant_file:
-    __bowtie1_index_rna__fasta = config['general']["genome_directory"] + os.sep + config["general"]["contaminant_file"]
+    # Could be a local file of in the genome directory file
+    __bowtie1_index_rna__fasta = f"{manager.config.general.contaminant_file}"
+
+    # if not found locally, try to find it in the genome_directory path
     if os.path.exists(__bowtie1_index_rna__fasta) is False:
-        error("File {} does not exists. Check your config file".format(__bowtie1_index_rna__fasta))
+        __bowtie1_index_rna__fasta = f"{genome_directory}/{manager.config.general.contaminant_file}"
+        if os.path.exists(__bowtie1_index_rna__fasta) is False:
+            logger.error("File {} does not exists. Check your config file".format(__bowtie1_index_rna__fasta))
+            sys.exit(1)
+
+    # we will copy the file to keep the information
+    os.makedirs("inputs/contamination_file", exist_ok=True)
+    shutil.copy(__bowtie1_index_rna__fasta, "inputs/contamination_file")
+
+    # so we need to rename the input
+    __bowtie1_index_rna__fasta = "inputs/contamination_file/" + os.path.basename(__bowtie1_index_rna__fasta)
+
+    bowtie1_index_conta__input_reference = __bowtie1_index_rna__fasta
+    bowtie1_index_conta__output = f"{__bowtie1_index_rna__fasta}.1.ebwt"
+    rule samtools_faidx:
+        input:
+            __bowtie1_index_rna__fasta
+        output:
+            __bowtie1_index_rna__fasta + ".fai"
+        shell:
+            """
+            samtools faidx {input[0]}
+            """
+
+
 elif manager.config.general.rRNA_feature:
-    # extract rRNA feature from GFF and get corresponding fasta
-    # and gff. if no match for rRNA, save empty fasta as AAAAAAAAAAA
-    __extract_fasta_from_bed__input =       __fasta_file__
-    __extract_fasta_from_bed__gff =         __gff_file__
-    __extract_fasta_from_bed__feature =     config["general"]["rRNA_feature"]
-    __extract_fasta_from_bed__output =          __prefix_name__ + "_rRNA.fa"
-    __extract_fasta_from_bed__output_features = __prefix_name__ + "_rRNA.gff"
-    __extract_fasta_from_bed__log =             "logs/indexing/get_rRNA.log"
-    include: sm.modules["extract_fasta_from_bed"]
+    # extract the rRNA feature from the GFF file. Build the corresponding FastA
+    # file. if not found, a dummy FastA file with  AAAAAAAAAAAAAA is built
 
-    # This is fast, so we do it again
-    __bowtie1_index_rna__fasta = __extract_fasta_from_bed__output
+    bowtie1_index_conta__input_reference = f"{__prefix_name__}_{config.general.rRNA_feature}.fa"
+    bowtie1_index_conta__input_gff = f"{__prefix_name__}_{config.general.rRNA_feature}.gff"
+    bowtie1_index_conta__output = f"{__prefix_name__}_{config.general.rRNA_feature}.1.ebwt"
+    rule extract_fasta:
+        input:
+            fasta = __fasta_file__,
+            gff = __gff_file__
+        params:
+            feature = config.general.rRNA_feature
+        output:
+            fasta = bowtie1_index_conta__input_reference,
+            fai = bowtie1_index_conta__input_reference + ".fai",
+            gff = bowtie1_index_conta__input_gff
+        log:
+            "logs/indexing/get_rRNA.log"
+        shell:
+            """
+            gawk '{{ if ($3=="{params.feature}") print }}' {input.gff} > {output.gff}
+            if [ -s {output.gff} ]
+            then
+                bedtools getfasta -fi {input.fasta} -bed {output.gff}  -fo {output.fasta}
+            else :
+                echo -e ">empty\\nAAAAAAAAAAAAAA" > {output.fasta}
+            fi
+            samtools faidx {output.fasta}
+            """
 
+
+# ========================================================= Indexing for rRNA and contmination
+#
+# redo the indexing whatsover since it is pretty fast
 if manager.config.general.contaminant_file or manager.config.general.rRNA_feature:
-    __bowtie1_index_rna__output_done = __prefix_name__ + "_rRNA.1.ebwt"
-    __bowtie1_index_rna__output_prefix = __prefix_name__ + "_rRNA"
-    __bowtie1_index_rna__log = "logs/bowtie1_indexing/bowtie_rRNA.log"
-    include: bowtie1_index_dynamic("rna")
-    __RNA_index__ = __bowtie1_index_rna__output_prefix
+
+    # identify ribosomal contamination or contamination
+    rule ribosomal_contamination:
+        input:
+            reference = bowtie1_index_conta__input_reference,
+            fai = bowtie1_index_conta__input_reference + ".fai"
+        output:
+            bowtie1_index_conta__output
+        log:
+            "logs/indexing/bowtie1_index_conta.log"
+        params:
+            options=""
+        threads: 2
+        wrapper:
+            "main/wrappers/bowtie1/build"
+
 
 # ============================================================================ bowtie2 index
-
+#
 if manager.config.general.aligner == "bowtie2":
-    if config['bowtie2_mapping_ref']['genome_size_larger_than_4gb']:
+    if config['bowtie2']['genome_size_larger_than_4gb']:
         bt2_ext = "bt2l"
-    else: 
+    else:
         bt2_ext = "bt2"
 
     # These two variables are used elsewhere and in the rule below
@@ -165,17 +190,30 @@ if manager.config.general.aligner == "bowtie2":
     except Exception:  # various type of exception may occur here
          logger.warning(f"Could not determine bowtie2 version. Index will be stored in {genome_directory}/bowtie2/")
          bowtie2_version = ""
-    __bowtie2_index__output_done   = genome_directory + f"/bowtie2{bowtie2_version}/{genome_name}.1.{bt2_ext}"
-    __bowtie2_index__ = genome_directory + f"/bowtie2{bowtie2_version}/{genome_name}"
 
-    if os.path.exists(__bowtie2_index__output_done):
+    bowtie2_index = f"{genome_directory}/bowtie2{bowtie2_version}/{genome_name}"
+    bowtie2_index_output = f"{bowtie2_index}.1.{bt2_ext}"
+
+    if os.path.exists(f"{bowtie2_index}.1.{bt2_ext}"):
         pass # index exists, no need to do it, everything should be fine
     else:
-        __bowtie2_index__fasta =            __fasta_file__
-        __bowtie2_index__output_prefix =    genome_directory + f"/bowtie2{bowtie2_version}/{genome_name}"
-        __bowtie2_index__log = "logs/indexing/bowtie2_genome.log"
-        include: sm.modules['bowtie2_index']
+        rule bowtie2_index:
+            input:
+                reference=__fasta_file__
+            output:
+                bowtie2_index_output
+            log:
+                "logs/indexing/bowtie2_genome.log"
+            params:
+                options=config["bowtie2_index"]["options"]
+            threads:
+                config["bowtie2_index"]["threads"]
+            wrapper:
+                "main/wrappers/bowtie2/build"
 
+
+# ============================================================================ star index
+#
 elif manager.config.general.aligner  == "star":
     # tested on version 2.7.8a
     try:
@@ -196,6 +234,8 @@ elif manager.config.general.aligner  == "star":
         __star_index__log = "logs/indexing/star_genome.log"
         include: sm.modules["star_index"]
 
+# ========================================================================== salmon
+#
 elif manager.config.general.aligner == "salmon":
     #tested on salmon 1.4.0
     try:
@@ -215,25 +255,25 @@ elif manager.config.general.aligner == "salmon":
         __salmon_index__log = "logs/indexing/salmon.log"
         include: sm.modules["salmon_index"]
 
-
-
-# FASTQC on input data set
-
+# ===================================================================== FASTQC on input data set
+#
 if not config['fastqc']['skip_fastqc_samples']:
-    __fastqc_samples__input_fastq = __data__input
-    __fastqc_samples__output_done = manager.getname("fastqc_samples", ".done")
-    __fastqc_samples__wkdir       = manager.getwkdir("fastqc_samples")
-    __fastqc_samples__log         = "%s/fastqc_samples/fastqc.log" % manager.sample
-    include: fastqc_dynamic("samples", manager)
-    expected_output.extend(expand(__fastqc_samples__output_done, sample=manager.samples))
+    __fastqc__input = manager.getrawdata()
+    __fastqc__output = "{sample}/fastqc/fastqc.done"
+    __fastqc__log = "{samples}/fastqc/fastqc.log"
+    __fastqc__wkdir = "{samples}/fastqc/"
+    include: sm.modules['fastqc']
+    expected_output.extend(expand(__fastqc__output, sample=manager.samples))
 
+
+# ================================================================== trimming
 valid_trimmer = ['cutadapt', 'fastp', 'atropos']
 if manager.config.trimming.software_choice not in valid_trimmer:
     print(f"Invalid choice for trimming tool. Choose one in {valid_trimmer}")
     sys.exit(1)
 
 if manager.config.trimming.do is False:
-    __clean_fastq__output = __data__input
+    __clean_fastq__output = manager.getrawdata()
 elif manager.config.trimming.software_choice in ["cutadapt", "atropos"]:
     adapter_tool = manager.config.cutadapt.software_choice
 
@@ -242,11 +282,11 @@ elif manager.config.trimming.software_choice in ["cutadapt", "atropos"]:
 
     if adapter_tool in ["cutadapt", "atropos"]:
         adapter_tool = "cutadapt"
-        __cutadapt__input_fastq = __data__input
+        __cutadapt__input_fastq = manager.getrawdata()
         __cutadapt__wkdir = manager.getwkdir("cutadapt")
-        __cutadapt__output = [manager.getname("cutadapt", "_R1_.cutadapt.fastq.gz")]
+        __cutadapt__output = [manager.getname("cutadapt", "_R1_.clean.fastq.gz")]
         if manager.paired:
-            __cutadapt__output += [manager.getname("cutadapt", "_R2_.cutadapt.fastq.gz")]
+            __cutadapt__output += [manager.getname("cutadapt", "_R2_.clean.fastq.gz")]
 
         # Set the fwd and rev adapters
         __cutadapt__fwd = manager.config.cutadapt.fwd
@@ -254,12 +294,12 @@ elif manager.config.trimming.software_choice in ["cutadapt", "atropos"]:
 
         __cutadapt__options = manager.config.cutadapt.options
         __cutadapt__mode = manager.config.cutadapt.mode
-        __cutadapt__log = "%s/logs/cutadapt/cutadapt.txt" % manager.sample
+        __cutadapt__log = "%s/cutadapt/cutadapt.txt" % manager.sample
         __cutadapt__sample = manager.sample
         __clean_fastq__output = __cutadapt__output
         include: sm.modules["cutadapt"]
 elif manager.config.trimming.software_choice == "fastp":
-    __fastp__input_fastq = __data__input
+    __fastp__input_fastq = manager.getrawdata()
     __fastp__output = ["{sample}/fastp/{sample}_R1_.fastp.fastq.gz"]
     if manager.paired:
         __fastp__output += ["{sample}/fastp/{sample}_R2_.fastp.fastq.gz"]
@@ -270,28 +310,39 @@ elif manager.config.trimming.software_choice == "fastp":
     __clean_fastq__output = __fastp__output
 
 
-# FASTQC on input data set
-__fastqc_filtered__input_fastq = __clean_fastq__output
-__fastqc_filtered__output_done = manager.getname("fastqc_filtered", ".done")
-__fastqc_filtered__wkdir       = manager.getwkdir("fastqc_filtered")
-__fastqc_filtered__log         = "%s/fastqc_filtered/fastqc.log" % manager.sample
-include: fastqc_dynamic("filtered", manager)
-expected_output.extend(expand(__fastqc_filtered__output_done, sample=manager.samples))
+# ===================================================== FASTQC fastp results
+#
+rule fastqc_clean:
+    input:
+        __clean_fastq__output
+    output:
+        done = "{sample}/fastqc_clean/fastqc.done"
+    params:
+        options= config["fastqc"]["options"],
+        working_directory= "{sample}/fastqc_clean/"
+    threads: config["fastqc"]["threads"]
+    log:
+        "{sample}/fastqc_clean/fastqc.log"
+    wrapper:
+        "main/wrappers/fastqc"
+expected_output.extend(expand("{sample}/fastqc_clean/fastqc.done", sample=manager.samples))
 
 
-# Decompress fastq.gz file before running bowtie1
+# ================================= Decompress fastq.gz file before running bowtie1
+#
 if manager.config.trimming.software_choice == 'cutadapt':
-    __unpigz_R1__input = manager.getname("cutadapt", "_R1_.cutadapt.fastq.gz")
-    __unpigz_R1__output = manager.getname("cutadapt", "_R1_.cutadapt.fastq")
+    __unpigz_R1__input = manager.getname("cutadapt", "_R1_.clean.fastq.gz")
+    __unpigz_R1__output = manager.getname("cutadapt", "_R1_.clean.fastq")
 elif manager.config.trimming.software_choice == 'fastp':
     __unpigz_R1__input = "{sample}/fastp/{sample}_R1_.fastp.fastq.gz"
     __unpigz_R1__output = "{sample}/fastp/{sample}_R1_.fastp.fastq"
 else:
-    __unpigz_R1__input = __data__input
+    __unpigz_R1__input = manager.getrawdata()
     __unpigz_R1__output = manager.getname("cutadapt", "_R1_.fastq")
 
 
-# make sure it is a multiple of 4 (fastq input)
+# ==========  decompress and sanity check
+#
 if int(config['bowtie1_mapping_rna']['nreads']) != -1:
     extra = int(config['bowtie1_mapping_rna']['nreads']) % 4
     config['bowtie1_mapping_rna']['nreads'] -= extra
@@ -321,47 +372,81 @@ unaligned due to the many mismatches. So we do not include R2 from version
 v0.9.14.
 """
 
+# ========================================== bowtie1 mapping to detect rRNA
 
 if manager.config.general.rRNA_feature or manager.config.general.contaminant_file:
     # rRNA. Note the list here below because the rule expects a list (in case it
     # is paired
-    __bowtie1_mapping_rna__input = [__unpigz_R1__output]
-    __bowtie1_mapping_rna__index_done = __bowtie1_index_rna__output_done
-    __bowtie1_mapping_rna__bam = manager.getname("bowtie1_mapping_rna", ".bam")
-    __bowtie1_mapping_rna__sort = manager.getname("bowtie1_mapping_rna", ".sorted.bam")
-    __bowtie1_mapping_rna__prefix_index = __RNA_index__
-    __bowtie1_mapping_rna__stdout = manager.getname("bowtie1_mapping_rna", "_rRNA.out")
-    __bowtie1_mapping_rna__stderr = manager.getname("bowtie1_mapping_rna", "_rRNA.err")
 
-    include: bowtie1_mapping_dynamic("rna", manager)
-    expected_output.extend(expand(__bowtie1_mapping_rna__sort, sample=manager.samples))
+    rule bowtie1_mapping_rna:
+        input:
+            fastq= __unpigz_R1__output,
+            #index = f"{__prefix_name__}_{config.general.rRNA_feature}.1.ebwt"
+            index=bowtie1_index_conta__output
+        output:
+            bam = "{sample}/bowtie1_mapping_rna/{sample}_rRNA.bam",
+            sorted = "{sample}/bowtie1_mapping_rna/{sample}_rRNA.sorted.bam",
+        log:
+            "{sample}/bowtie1_mapping_rna/{sample}_bowtie1.log"
+        params:
+            options=""
+        threads: config['bowtie1_mapping_rna']['threads']
+        wrapper:
+            "main/wrappers/bowtie1/align"
+
+    expected_output.extend(expand("{sample}/bowtie1_mapping_rna/{sample}_rRNA.sorted.bam",
+        sample=manager.samples))
+
+    rule fix_bowtie1_log:
+        input:
+            expand("{sample}/bowtie1_mapping_rna/{sample}_bowtie1.log", sample=manager.samples)
+        output:
+            "logs/fix_bowtie1_log"
+        run:
+
+            for filename in input:
+                # we read the file
+                with open(filename) as fin:
+                    data = fin.readlines()
+                # we update the file
+                with open(filename, "w") as fout:
+                    for line in data:
+                        if "least one alignment" in line:
+                            fout.write(line)
+                            fout.write(line.replace("least one alignment", "least one reported alignment"))
+                        else:
+                            fout.write(line)
+            with open(output[0], "w") as fout:
+                fout.write("")
+    expected_output += ["logs/fix_bowtie1_log"]
 
 
-if manager.config.general.aligner == "bowtie1":
-    # Mapper bowtie 1
-    __bowtie1_mapping_ref__input = __unpigz_R1__output
-    __bowtie1_mapping_ref__index_done = __bowtie1_index_ref__output_done
-    __bowtie1_mapping_ref__bam = manager.getname("bowtie1_mapping_ref", ".bam")
-    __bowtie1_mapping_ref__sort = manager.getname("bowtie1_mapping_ref", ".sorted.bam")
-    __bowtie1_mapping_ref__prefix_index = __bowtie1_index__
-    __bowtie1_mapping_ref__stdout = manager.getname("bowtie1_mapping_ref", ".out")
-    __bowtie1_mapping_ref__stderr = manager.getname("bowtie1_mapping_ref", ".err")
-    include: bowtie1_mapping_dynamic("ref", manager)
-    expected_output.extend(expand(__bowtie1_mapping_ref__sort, sample=manager.samples))
-    __mapping_output = __bowtie1_mapping_ref__sort
-elif manager.config.general.aligner == "bowtie2":
-    # mapping on ref
-    __bowtie2_mapping_ref__input = __clean_fastq__output
-    __bowtie2_mapping_ref__index_done = __bowtie2_index__output_done
-    __bowtie2_mapping_ref__sort = manager.getname("bowtie2_mapping_ref", ".sorted.bam")
-    __bowtie2_mapping_ref__bam = manager.getname("bowtie2_mapping_ref", ".bam")
-    __bowtie2_mapping_ref__logs_err = manager.getname("bowtie2_mapping_ref", ".err")
-    __bowtie2_mapping_ref__logs_out = manager.getname("bowtie2_mapping_ref", ".out")
-    __bowtie2_mapping_ref__options = config["bowtie2_mapping_ref"]["options"]
-    __bowtie2_mapping_ref__prefix_index = __bowtie2_index__
-    include: bowtie2_mapping_dynamic("ref", manager)
-    expected_output.extend(expand(__bowtie2_mapping_ref__sort, sample=manager.samples))
-    __mapping_output = __bowtie2_mapping_ref__sort
+# ========================================================== bowtie2 mapping
+if manager.config.general.aligner == "bowtie2":
+
+    rule bowtie2_mapping:
+        input:
+            fastq=__clean_fastq__output,
+            bt2=bowtie2_index_output
+        output:
+            bam="{sample}/bowtie2/{sample}.bam",
+            sorted="{sample}/bowtie2/{sample}.sorted.bam",
+        log:
+            "{sample}/bowtie2/{sample}.log"
+        params:
+            index=bowtie2_index,
+            options=config["bowtie2"]["options"], 
+        threads: config["bowtie2"]["threads"]
+        wrapper:
+            "main/wrappers/bowtie2/align"
+
+    expected_output.extend(
+        expand("{sample}/bowtie2/{sample}.sorted.bam", sample=manager.samples)
+    )
+    __mapping_output = "{sample}/bowtie2/{sample}.sorted.bam"
+
+
+# ========================================================== star mapping
 elif manager.config.general.aligner == "star":
     # Mapper rna-star
     __star_mapping__input = __clean_fastq__output
@@ -389,16 +474,16 @@ elif manager.config.general.aligner == "salmon":
     # There is no BAM created 
     __mapping_output = None
 
+
+# ========================================================== add_read_group
 # The input is the output of the mapping 
 # Add Read group on BAM files
 if manager.config.general.aligner not in ['salmon']:
     __add_read_group__input = __mapping_output
-    __add_read_group__output = manager.getname("add_read_group", ".bam")
-    __add_read_group__log_err = "%s/logs/AddOrReplaceReadGroups/stderr.logs" % manager.sample
-    __add_read_group__log_std ="%s/logs/AddOrReplaceReadGroups/stdout.logs" % manager.sample
-    __add_read_group__rg = "ID=%s LB=%s PL=%s PU=%s SM=%s" % (
-        manager.sample, manager.sample, manager.config.sequencing.platform,
-        manager.config.sequencing.flowcell, manager.sample)
+    __add_read_group__output = "{sample}/add_read_group/{sample}.bam"
+    __add_read_group__log_err = "{sample}/add_read_group/log.err"
+    __add_read_group__log_std ="{sample}/add_read_group/log.out"
+    __add_read_group__rg = "ID={sample} LB=undefined PL=Illumina PU=undefined SM={sample}"
     include: sm.modules["add_read_group"]
 
 
@@ -408,21 +493,16 @@ if manager.config.general.aligner not in ['salmon']:
 # if Paired, most likely a PCR origin.
 # Mark duplicates
 if config["mark_duplicates"]["do"]:
-    __mark_duplicates_ref__input   = __add_read_group__output
-    __mark_duplicates_ref__output  = manager.getname("mark_duplicates", ".bam")
-    __mark_duplicates_ref__metrics = manager.getname("mark_duplicates", ".metrics")
-    __mark_duplicates_ref__log_std = "%s/logs/mark_duplicates/stdout.logs" % manager.sample
-    __mark_duplicates_ref__log_err = "%s/logs/mark_duplicates/stderr.logs" % manager.sample
-    include: mark_duplicates_dynamic("ref", manager)
-    expected_output.extend(expand(__mark_duplicates_ref__output, sample=manager.samples))
-    __final_bam__ = __mark_duplicates_ref__output
+    __mark_duplicates__input = __add_read_group__output
+    include: sm.modules["mark_duplicates"]
+    __final_bam__ = "{sample}/mark_duplicates/{sample}.bam"
 elif manager.config.general.aligner not in ['salmon']:
     __final_bam__   = __add_read_group__output
 else:
     __final_bam__ = []
 
 
-# generating bigwig files
+# ====================================================================== generating bigwig files
 if manager.config.coverage.do is True and config['general']['aligner'] not in ['salmon']:
     __bamCoverage__input = __final_bam__
     __bamCoverage__log = manager.getname("bamCoverage", ".logs")
@@ -431,27 +511,37 @@ if manager.config.coverage.do is True and config['general']['aligner'] not in ['
     expected_output.extend(expand(__bamCoverage__output, sample=manager.samples))
 
 
+# ============================================================= generating IGV plots
 if manager.config.igvtools.do and config['general']['aligner'] not in ['salmon']:
     # if nothing provided, it must be an empty string
     if manager.config.igvtools.chrom_sizes_file.strip():
         pass
     else:
-      config["igvtools"]["chrom_sizes_file"] = __fasta_file__
+        config["igvtools"]["chrom_sizes_file"] = __fasta_file__
 
-    __igvtools__input = __final_bam__
-    __igvtools__output = manager.getname("igvtools", ".tdf")
-    __igvtools__log = manager.getname("igvtools", ".logs")
-    include: sm.modules["igvtools"]
-    expected_output.extend(expand(__igvtools__output, sample=manager.samples))
+    rule igvtools:
+        input: __final_bam__
+        output:
+            "{sample}/igvtools/{sample}.tdf"
+        log:
+            "{sample}/igvtools/{sample}.log"
+        params:
+            chromSize=config['igvtools']['chrom_sizes_file']
+        threads: 4
+        shell:
+            """
+            igvtools count -z 5 -w 25 -f mean,max --includeDuplicates {input} {output} {params.chromSize}
+            """
+    expected_output.extend(expand("{sample}/igvtools/{sample}.tdf", sample=manager.samples))
 
 
-# Feature counts from subread suite
+# ===================================================================== Feature counts from subread suite
 if manager.config.general.aligner == "salmon":
     __feature_counts__input = __salmon_mapping__output_counts
 else :
     __feature_counts__input = __final_bam__
 
-fc_outdir = "rnadiff/feature_counts/"
+fc_outdir = "post_analysis/feature_counts/"
 
 if manager.config.feature_counts.do and manager.config.general.aligner not in ['salmon']:
     # Guessing strandness is not always straightfoward; Even when we set it; 
@@ -463,67 +553,68 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
     feature_type = config['feature_counts']['feature']
     if "," in feature_type: # assume this is a custom GFF file
         feature_type = "custom"
-
-    fc_options = " -t {} -g {} ".format(
-        feature_type,
-        config['feature_counts']['attribute'])
+    else:
+        feature_type = config['feature_counts']["feature"]
 
     if config['feature_counts']['extra_attributes']:
+        fc_options = f" {config['feature_counts']['options']} "
         fc_options += " --extraAttributes {} ".format(config['feature_counts']['extra_attributes'])
+    else:
+        fc_options = f" {config['feature_counts']['options']} "
 
-    # We finally add other options that may overwrite previous options ! as
-    # described in the rnaseq pipeline documentation. 
-    fc_options += " {} ".format(config['feature_counts']['options'])
-
-    __feature_counts_0__output_count = manager.getname("feature_counts_0", "_feature.out")
-    __feature_counts__gff = __gff_file__
-    __feature_counts__options = fc_options + " -s 0 "
     if manager.paired:
-        __feature_counts__options += " -p "
-    __feature_counts_0__log = manager.getname("feature_counts_0", ".logs")
-    __feature_counts__threads = config["feature_counts"]["threads"]
-    include: feature_counts_dynamic("0", manager)
+        fc_options += " -p "
 
-    __feature_counts_1__output_count = manager.getname("feature_counts_1", "_feature.out")
-    __feature_counts_1__log = manager.getname("feature_counts_1", ".logs")
-    __feature_counts__options = fc_options + " -s 1"
-    if manager.paired:
-        __feature_counts__options +=  " -p "
-    include: feature_counts_dynamic("1", manager)
 
-    __feature_counts_2__output_count = manager.getname("feature_counts_2", "_feature.out")
-    __feature_counts_2__log = manager.getname("feature_counts_2", ".logs")
-    __feature_counts__options = fc_options + " -s 2"
-    if manager.paired:
-        __feature_counts__options +=  " -p "
-    include: feature_counts_dynamic("2", manager)
-
-    __guess_strandness__output =expand(fc_outdir + "{sample}_feature.out", sample=manager.samples) 
-    rule guess_strandness:
+    # ======================= calls feature counts 3 times Nsamples here below
+    strand = [0,1,2]
+    rule feature_counts:
         input:
-            fc0= expand(__feature_counts_0__output_count, sample=manager.samples),
-            fc1= expand(__feature_counts_1__output_count, sample=manager.samples),
-            fc2= expand(__feature_counts_2__output_count, sample=manager.samples)
+            bam=__feature_counts__input,
+            gff=__gff_file__
+        output:
+            counts="{sample}/feature_counts/{strand}/{sample}_feature.out",
+            summary="{sample}/feature_counts/{strand}/{sample}_feature.out.summary"
+        params:
+            options=fc_options,
+            feature=feature_type,
+            attribute=config['feature_counts']["attribute"],
+            strandness="{strand}"
+        threads:
+            config["feature_counts"]['threads']
+        log:
+            "{sample}/feature_counts/{strand}/feature_counts.log"
+        wrapper:
+            "main/wrappers/feature_counts"
+
+
+    # ===================== guessing the strand 
+    #
+    __guess_strandness__output = expand(fc_outdir + "{sample}_feature.out", sample=manager.samples)
+    rule guess_strandness:
+        """Guessing strandnes"""
+        input:
+            counts = expand("{sample}/feature_counts/{strand}/{sample}_feature.out", sample=manager.samples, strand=[0,1,2])
         output:
             data=__guess_strandness__output,
-            summary=__strand__summary
+            summary=manager.globals['strand_summary']
         run:
             # We compute all strandness
             import sequana.featurecounts as fc
-            tolerance = config['feature_counts']['tolerance']
-            mfc = fc.MultiFeatureCount(rnaseq_folder=".", tolerance=tolerance)
-            probable_strand, strand_df = mfc.get_most_probable_strand_consensus()
-            strand_df.to_csv(output.summary)
+
+            mfc = fc.MultiFeatureCount(rnaseq_folder=".", 
+                        tolerance=manager.config.feature_counts.tolerance)
+            mfc.df.to_csv(output.summary)
+
             try:
                 mfc.plot_strandness(savefig=True, output_filename="outputs/strand_summary.png")
             except Exception as err:
                 logger.warning("Could not create plot_strandness")
-                logger.warning("err")
 
-            logger.info("strandness inference: {}".format(probable_strand))
-            msg = "This is {probable_strand} data (check in the multiqc report)"
-            if probable_strand in [0, 1, 2]:
-                choice = probable_strand
+            logger.info(f"strandness inference: {mfc.probable_strand}")
+            msg = f"This is {mfc.probable_strand} data (check in the multiqc report)"
+            if mfc.probable_strand in [0, 1, 2]:
+                choice = mfc.probable_strand
                 logger.info(msg)
             else:
                 logger.warning("Strandness is apparently neither of 0, 1, 2")
@@ -537,19 +628,12 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
                     choice = user_choice
                 else:
                     logger.error(f"strandness in the config file must be 0,1,2. You gave {user_choice}")
+                    sys.exit(1)
 
-            if choice == 0:
-               for filename in input.fc0:
-                   shell("cp {} {}".format(filename, fc_outdir))
-                   shell("cp {}.summary {}".format(filename, fc_outdir))
-            elif choice == 1:
-               for filename in input.fc1:
-                   shell("cp {} {}".format(filename, fc_outdir))
-                   shell("cp {}.summary {}".format(filename, fc_outdir))
-            elif choice == 2:
-               for filename in input.fc2:
-                   shell("cp {} {}".format(filename, fc_outdir))
-                   shell("cp {}.summary {}".format(filename, fc_outdir))
+            if choice in {0, 1, 2}:
+                for filename in input:
+                    shell(f"cp {filename} {fc_outdir}")
+                    shell(f"cp {filename}.summary {fc_outdir}")
             else:
                 # if not clear, we copy everything and users should clean up the directory
                 for filename in input.fc0:
@@ -561,13 +645,11 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
                 for filename in input.fc2:
                     shell("cp {} {}".format(filename, fc_outdir))
                     shell("cp {}.summary {}".format(filename, fc_outdir))
-    expected_output += __guess_strandness__output
 elif manager.config.feature_counts.do and manager.config.general.aligner in ['salmon']:
 
-    __salmon_to_features__input = __salmon_mapping__output_counts
     __salmon_to_features__output = fc_outdir + "{sample}_feature.out"
     rule salmon_to_features:
-        input: __salmon_to_features__input
+        input: __salmon_mapping__output_counts
         output: __salmon_to_features__output
         params:
             gff=__gff_file__
@@ -575,16 +657,20 @@ elif manager.config.feature_counts.do and manager.config.general.aligner in ['sa
             """sequana salmon --input {input} --output {output} --gff {params.gff} --attribute ID   """
     expected_output += expand(__salmon_to_features__output, sample=manager.samples)
 
+
+# ==================================================================== Guess strandness
+
 if manager.config.general.aligner in ['salmon']:
     __guess_strandness__output = expand(__salmon_to_features__output, sample=manager.samples)
 rule merge_feature_counts:
     input: __guess_strandness__output
-    output: "rnadiff/all_features.out"
+    output: "post_analysis/all_features.out"
     run:
         from sequana.featurecounts import FeatureCountMerger
         fcm = FeatureCountMerger(fof=input)
         fcm.to_tsv(output[0])
 
+# ================================================================== rseqc diag tool
 
 
 if config['rseqc']['do']:
@@ -597,10 +683,8 @@ if config['rseqc']['do']:
             input: __gff_file__
             output: __bed__file
             run:
-                from sequana import GFF3
                 g = GFF3(input[0])
                 g.to_bed(output[0], 'Name')
-
 
     rule rseqc:
         input:
@@ -618,11 +702,10 @@ if config['rseqc']['do']:
             "{sample}/rseqc/{sample}.log"
         shell:
             """
-
             # for paired data only
             inner_distance.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample} -r {input.bed}
 
-            # FIXME. For now GC not very useful in the output so commented
+            # For now GC not very useful in the output so commented
             # read_GC.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample}
 
             # genebody coverage
@@ -631,15 +714,13 @@ if config['rseqc']['do']:
             # uses bigwig redundant with geneBody_coverage
             # geneBody_coverage2.py -i {wildcards.sample}/bamCoverage/{wildcards.sample}.norm.bw  -o {wildcards}/rseq/{wildcards.sample} -r test.bed
 
-            # FIXME. not included in the multiqc module so commented for now
+            # Not included in the multiqc module so commented for now
             #clipping_profile.py -i {input.bam} -s {params.paired} -o {wildcards.sample}/rseqc/{wildcards.sample}
-        
-            read_duplication.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample} 
-            junction_annotation.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample} -r {input.bed} 
+            read_duplication.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample}
+            junction_annotation.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample} -r {input.bed}
             junction_saturation.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample}  -r {input.bed}
             infer_experiment.py -i {input.bam} -r {input.bed} > {wildcards.sample}/rseqc/{wildcards.sample}.infer.txt
 
-    
             # bam stats  KEEP last since that is the expected output to make sure
             # previous files (not listed in output:) are computed first.
             bam_stat.py -i {input.bam} > {output.bam_stat}
@@ -650,27 +731,12 @@ if config['rseqc']['do']:
         expand("{sample}/rseqc/{sample}_bam_stat.txt", sample=manager.samples)
     )
 
-
-
-
-# FIXME do we need the mark_duplicates for RNASEQC2 ? is it compulsary ?
+# ========================================================== RNAseqc diag tool
+# No need for mark_duplicates for RNASEQC . Just use the BAM file
 if config["rnaseqc"]["do"] and config['general']['aligner'] != 'salmon':
-    __reorderSam__input_sam = __final_bam__
-    __reorderSam__input_genome = __fasta_file__
-    __reorderSam__logs = manager.getname("reorderSam", ".logs")
-    __reorderSam__output = manager.getname("reorderSam", "_reorder.bam")
-    include: sm.modules["reorderSam"]
-    #expected_output.extend(expand(__reorderSam__output, sample=manager.samples))
 
-    # Define input of the rnaseqc rule.
-    if config["mark_duplicates"]['do']:
-        __rnaseqc__input_bam = __mark_duplicates_ref__output
-    else:
-        __rnaseqc__input_bam = __reorderSam__input_sam
 
     # for multiqc, important that output directories are called rnaseqc
-    #__rnaseqc__input_genome = __fasta_file__
-    #
     __gtf_file__ = config['rnaseqc']['gtf_file'].strip()
 
     # Could be a local file. If provided,
@@ -686,55 +752,77 @@ if config["rnaseqc"]["do"] and config['general']['aligner'] != 'salmon':
             logs.critical(f"{__gtf_file__} not found in {gdir}. Trying the GFF file")
             __gtf_file__ = __prefix_name__ + ".gff"
 
-    __rnaseqc__input_gtf = __gtf_file__
-    __rnaseqc__params_directory = "{sample}/rnaseqc"
-    __rnaseqc__logs = "{sample}/rnaseqc/{sample}.log"
-    __rnaseqc__params_sample = "{sample}"
-    __rnaseqc__output_metrics = "{sample}/rnaseqc/{sample}.metrics.tsv"
-    include: sm.modules["rnaseqc"]
-    expected_output.extend(expand(__rnaseqc__output_metrics, sample=manager.samples))
+    rule rnaseqc:
+        input:
+            bam = __final_bam__,
+            gtf = __gtf_file__
+        output:
+            metrics = "{sample}/rnaseqc/{sample}.metrics.tsv"
+        log:
+            "{sample}/rnaseqc/{sample}.log",
+        params:
+            directory = "{sample}/rnaseqc",
+            options= config['rnaseqc']['options']
+        run:
+            # If input GTF has no exon or genes, an error message is printed and 
+            # no files are created. This seems to be an issue in rnaseqc. 
+            # So, we create dummy gene and exon
+            from easydev import TempFile
+            with TempFile(suffix=".gtf") as fout:
+                ff = open(fout.name, "w")
+                ff.write('myCHR\tSGD\tgene\t0\t0\t.\t+\t0\tgene_id "dummy";')
+                ff.write('myCHR\tSGD\texon\t0\t0\t.\t+\t0\texon_id "dummy";')
+                ff.write(open(input['gtf'], "r").read())
+                ff.close()
+                shell("rnaseqc " + fout.name + " {input.bam} {params.directory} -s {wildcards.sample} {params.options} &>{log}")
 
 
-# !Reset expected_output variable after multiqc
-# Hack while waiting for a more general multiqc rules
 
-# Multiqc rule
-__multiqc__input = expected_output
-__multiqc__input_dir = "."
-__multiqc__logs = "multiqc/multiqc.log"
-__multiqc__output = "multiqc/multiqc_report.html"
-if config['multiqc']['config_file']:
-    __multiqc__options = " -c " + config['multiqc']['config_file'] + " "+config['multiqc']['options']
-else :
-    __multiqc__options = config['multiqc']['options']
-__multiqc__output_dir = config['multiqc']['output_directory']
-
-include: sm.modules["multiqc"]
-#final_output.extend([__multiqc__output])
+    expected_output.extend(expand("{sample}/rnaseqc/{sample}.metrics.tsv", sample=manager.samples))
 
 
-# Include rule graph for each sample
-__rulegraph__input = manager.snakefile
-__rulegraph__output = ".sequana/rulegraph.svg"
-__rulegraph__mapper = {"multiqc": "../multiqc/multiqc_report.html"}
-include: sm.modules['rulegraph']
+# ========================================================== multiqc
+multiqc_params_options = config['multiqc']['options']
+if manager.config.multiqc.config_file:
+    multiqc_params_options += f" -c {manager.config.multiqc.config_file}"
 
 
-# Add Conda
-__conda__output = "requirements.txt"
-include: sm.modules['conda']   # Create requirements.txt(dependencies)
-#final_output.extend([__conda__output])
+
+rule multiqc:
+    input:
+        expected_output
+    output:
+       "multiqc/multiqc_report.html"
+    params:
+        options=multiqc_params_options,
+        input_directory=config['multiqc']['input_directory'],
+        config_file=config['multiqc']['config_file'],
+        modules=config['multiqc']['modules']
+    log:
+        "multiqc/multiqc.log"
+    wrapper:
+       "main/wrappers/multiqc"
+
+# ========================================================== rulegraph
+
+rule rulegraph:
+    input: manager.snakefile
+    output:
+        svg = ".sequana/rulegraph.svg"
+    params:
+        mapper = {"multiqc": "../multiqc/multiqc_report.html"},
+        configname = "config.yaml"
+    wrapper:
+        "main/wrappers/rulegraph"
 
 
 # Those rules takes a couple of seconds so no need for a cluster
-localrules: conda, rulegraph
+localrules:  rulegraph
 
 
 onsuccess:
     # Create plots about stats
     from sequana import logger as log
-    from sequana.gff3 import GFF3
-    from sequana.pipelines_common import get_pipeline_location as getpath
     from sequana import BAM
     from sequana.modules_report.summary import SummaryModule2
 
@@ -744,7 +832,7 @@ onsuccess:
     manager.teardown(
         extra_files_to_remove=["requirements.txt"],
         extra_dirs_to_remove=[".genomes", "tmp", "logs"])
-    manager.clean_multiqc(__multiqc__output)
+    manager.clean_multiqc("multiqc/multiqc_report.html")
 
 
 
@@ -752,12 +840,12 @@ onsuccess:
     # 1. save data for the RNADiff analysis
     from sequana.featurecounts import FeatureCount
     try:
-        fc = FeatureCount("rnadiff/all_features.out", guess_design=True)
-        fc.design_df.to_csv("rnadiff/design.csv", index=False)
+        fc = FeatureCount("post_analysis/all_features.out", guess_design=True)
+        fc.design_df.to_csv("post_analysis/design.csv", index=False)
     except:
         msg = "Could not build the design.csv file in rnadiff. You will need to create it manually."
         logger.warning(msg)
-        with open("rnadiff/README.rst", "w") as fout:
+        with open("post_analysis/README.rst", "w") as fout:
             fout.write(f"""{msg}
 The design.csv file must be formatted as follows (for 2 conditions with 3 replicates each):
 
@@ -771,28 +859,26 @@ samplename_6,condition_name_2
 """)
 
     # 2. save the script
-    with open("rnadiff/rnadiff.sh", "w") as fout:
+    with open("post_analysis/rnadiff.sh", "w") as fout:
         attribute = config['feature_counts']['attribute']
         feature = config['feature_counts']['feature']
         fout.write("#/bin/sh\nsequana rnadiff --features all_features.out " +
             f" --annotation {__gff_file__} --design design.csv --feature-name {feature} --attribute-name {attribute}")
-    shell("chmod 755 rnadiff/rnadiff.sh")
-        
-
+    shell("chmod 755 post_analysis/rnadiff.sh")
 
 
     # THE HTML REPORT is defined hereafter
     #
     from sequana_pipelines import rnaseq
     data = {"name": "rnaseq",
-            "rulegraph": __rulegraph__output,
+            "rulegraph": ".sequana/rulegraph.svg",
             "stats": "stats.txt",
             "pipeline_version": rnaseq.version}
 
 
     try:
         import pandas as pd
-        df = pd.read_csv(__strand__summary)
+        df = pd.read_csv(manager.globals['strand_summary'])
         guess = df['strand'].value_counts().idxmax()
         names = {0: 'stranded', 1: 'unstranded', 2: 'reversely stranded'}
         guess = names[guess]
@@ -807,14 +893,56 @@ samplename_6,condition_name_2
     intro = f"""
     <h2>Overview</h2>
     <p>
-    The RNA-seq pipeline maps the reads on the provided reference (called <i>{__fasta_file__.split("/")[-1]}</i>). Features counts were extracted and are available in the <a href="./rnadiff/feature_counts">feature counts</a> directory; those files are entry points for differential gene expression analysis. The differential analysis, if performed, should be available in the <a href="rnadiff/rnadiff.html">DGE analysis directory</a>. In addition, if enrichment was performed (GO or Kegg pathways), it should be available in the <a href="rnadiff/enrichment/summary.html"></a> directory.
+    The RNA-seq pipeline maps the reads on the provided reference (called <i>{__fasta_file__.split("/")[-1]}</i>). Features counts were extracted and are available in the <a href="./post_analysis/feature_counts">feature counts</a> directory; those files are entry points for differential gene expression analysis. The differential analysis, if performed, should be available in the <a href="post_analysis/rnadiff/">DGE analysis directory</a>. In addition, if enrichment was performed (GO or Kegg pathways), it should be available in the <a href="post_analysis"></a> directory as well.
     </p>
 
     <p>A <a href="multiqc/multiqc_report.html">multiqc report</a> is available, where various QC and mapping quality plots can be visualised.
     </p>"""
 
-    if __strand__summary:
 
+    try:
+        intro += """<h2>ribosomal / contaminant content</h2>"""
+        if os.path.exists("multiqc/multiqc_report_data/multiqc_bowtie1.txt"):
+            df = pd.read_csv("multiqc/multiqc_report_data/multiqc_bowtie1.txt", sep='\t')
+        else:
+            df = pd.read_csv("multiqc/multiqc_data/multiqc_bowtie1.txt", sep='\t')
+
+        if "reads_aligned_percentage" in df.columns:
+            rRNA = int(df.reads_aligned_percentage.mean()*100)/100
+        else:
+            rRNA = int((100 - df.not_aligned_percentage.mean())*100)/100
+
+        if rRNA < 10:
+            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is low (as expected). "
+        elif rRNA < 20:
+            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is moderately low. "
+        elif rRNA > 20:
+            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is relatively high. "
+        elif rRNA > 50:
+            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is very high high. "
+
+        intro += """Please see the <a href="multiqc/multiqc_report.html#bowtie1">section of the multiqc report</a> for details. Here below</p>"""
+    except Exception as err:
+        print(err)
+        pass
+
+    try:
+        from sequana.multiqc.plots import Bowtie1Reader
+        filename = "multiqc/multiqc_data/multiqc_bowtie1.txt"
+        if not os.path.exists(filename):
+            filename = "multiqc/multiqc_report_data/multiqc_bowtie1.txt"
+        br = Bowtie1Reader(filename)
+        br.df.Sample = [str(x).replace("_bowtie1","") for x in br.df.Sample]
+        fig = br.plot_bar(html_code=True)
+        from plotly import offline
+        intro += offline.plot(fig, output_type="div", include_plotlyjs=True)
+    except Exception as err:
+        print(err)
+        pass
+
+
+    if manager.globals['strand_summary']:
+        intro += """<h2>Strandness</h2>"""
         intro+="""
         <p>Here below is a QC plot related to the strandness found for each samples. The red dotted lines indicate a tolerance. The 0.5 vertical line correspond to an <b>unstranded</b> case. A value close to 0 indicates a <b>reversely stranded</b> case, and a value close to 1 indicates a <b>stranded</b> case.
     """.format(config["general"]['aligner'], guess)
@@ -825,50 +953,38 @@ samplename_6,condition_name_2
         else:
             intro += "Strandness was guessed from the data. </p>"
 
-        image = SummaryModule2.png_to_embedded_png("strand", "outputs/strand_summary.png", 
+        image = SummaryModule2.png_to_embedded_png("strand", "outputs/strand_summary.png",
                      style="width:80%; height:40%")
         intro += image
 
+    intro+=    """<h2>Differential analysis</h2>
+    <p>
+    Differentially expressed genes analysis is not performed automatically with this pipeline. However, information, feature counts, and other materials can be found in the directory ./post_analysis/. Most probably an analysis is present. If so, please open the directory in  <a href="post_analysis/rnadiff/">rnadiff</a> report.
+    </p>
+    """
+
+
+    # Now the final report. add the original command in the HTML report
     try:
-        intro += """<h2>ribosomal / contaminant content</h2>"""
-        df = pd.read_csv("multiqc/multiqc_data/multiqc_bowtie1.txt", sep='\t')
-
-        if "reads_aligned_percentage" in df.columns:
-            rRNA = int(df.reads_aligned_percentage.mean()*100)/100
-        else:
-            rRNA = int((100 - df.not_aligned_percentage.mean())*100)/100
-        if rRNA < 10:
-            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is low. "
-        elif rRNA < 20:
-            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is moderately low. "
-        elif rRNA > 20:
-            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is relatively high. "
-        elif rRNA > 50:
-            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is very high high. "
-
-        intro += """Please see the <a href="multiqc/multiqc_report.html#bowtie1">section of the multiqc report</a> for details. Here below</p>"""
-
-        from sequana.multiqc.plots import Bowtie1Reader
-        if os.path.exists("multiqc/multiqc_data/multiqc_bowtie1.txt"):
-            br = Bowtie1Reader("multiqc/multiqc_data/multiqc_bowtie1.txt")
-            fig = br.plot_bar(html_code=True)
-            from plotly import offline
-            intro += offline.plot(fig, output_type="div", include_plotlyjs=True)
-    except Exception as err:
-        print(err)
+        command = ""
+        with open(".sequana/info.txt", "r") as fin:
+            for line in fin:
+                if not line.startswith("#"):
+                    command += line
+        intro += f"<h2>Command used</h2>{command}"
+    except Exception:
         pass
 
-    intro+=    """
-    <p>
-    Differential gene expression analysis is not performed automatically with this pipeline. However, information, feature counts, and other materials can be found in the directory ./rnadiff. Most probably an analysis is present. If so, please open the report <a href="rnadiff/rnadiff.html">rnadiff</a>.
-    </p>
-
-    """
     s = SummaryModule2(data, intro)
+    #s.create_report_content(workflow=True)
+    #s.sections.append({"name": "Info", "anchor":"command", "content": command})
+    #s.create_html("summary.html")
 
     shell("chmod -R g+w .")
-    #shell("rm -rf rulegraph")
-onerror:
-    print("An error occurred. See message above.")
+    shell("rm -rf rulegraph")
 
+onerror:
+    from sequana_pipetools.errors import PipeError
+    p = PipeError("rnaseq")
+    p.status()
 
