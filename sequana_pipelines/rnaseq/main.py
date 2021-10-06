@@ -2,7 +2,7 @@
 #
 #  This file is part of Sequana software
 #
-#  Copyright (c) 2016-2020 - Sequana Development Team
+#  Copyright (c) 2016-2021 - Sequana Development Team
 #
 #  File author(s):
 #      Thomas Cokelaer <thomas.cokelaer@pasteur.fr>
@@ -23,6 +23,7 @@ import subprocess
 from sequana_pipetools.options import *
 from sequana_pipetools.misc import Colors
 from sequana_pipetools.info import sequana_epilog, sequana_prolog
+from sequana_pipetools import SequanaManager
 
 col = Colors()
 
@@ -135,7 +136,6 @@ def main(args=None):
     options = Options(NAME, epilog=sequana_epilog).parse_args(args[1:])
 
 
-    from sequana.pipelines_common import SequanaManager
 
     # the real stuff is here
     manager = SequanaManager(options, NAME)
@@ -157,18 +157,21 @@ def main(args=None):
 
         # genome name = cfg.genome.genome_directory
         genome_name = cfg.general.genome_directory.rsplit("/", 1)[1]
-        prefix= cfg.general.genome_directory 
+        prefix= cfg.general.genome_directory
         fasta = cfg.general.genome_directory + f"/{genome_name}.fa"
         if os.path.exists(fasta) is False:
             logger.critical("""Could not find {}. You must have the genome sequence in fasta with the extension .fa named after the genome directory.""".format(fasta))
             sys.exit()
 
-        cfg.general.rRNA_feature = options.rRNA_feature
-        cfg.general.contaminant_file = options.contaminant_file
 
-        if options.rRNA_feature and options.contaminant_file:
-            logger.warning("You are using --contaminant_file so --rRNA-feature will be ignored (we search for contaminant in the input file; not rRNA in the gff file")
-            sys.exit(1)
+        # mutually exclusive options
+        if options.contaminant_file:
+            cfg.general.contaminant_file = os.path.abspath(options.contaminant_file)
+            logger.warning("You are using a custom FASTA --contaminant_file so --rRNA-feature will be ignored")
+            cfg.general.rRNA_feature = None
+        else:
+            cfg.general.rRNA_feature = options.rRNA_feature
+
 
         # --------------------------------------------------------- trimming
         cfg.trimming.software_choice = options.trimming_software_choice
@@ -192,9 +195,6 @@ def main(args=None):
             cfg.fastp.disable_quality_filtering = False
             cfg.fastp.disable_adapter_trimming = False
 
-
-
-        #manager.update_config(cfg, options, "cutadapt")
 
         # ----------------------------------------------------  others
         cfg.input_directory = os.path.abspath(options.input_directory)
@@ -239,7 +239,6 @@ def main(args=None):
 
         import sequana_pipelines.rnaseq
 
-
         # SANITY CHECKS
         # -------------------------------------- do we find rRNA feature in the GFF ?
         # if we do not build a custom feature_counts set of options, no need to
@@ -249,10 +248,11 @@ def main(args=None):
             logger.info("Checking your input GFF file and rRNA feature if provided")
 
             from sequana.gff3 import GFF3
-            genome_directory = os.path.abspath(cfg["general"]["genome_directory"])
+            genome_directory = os.path.abspath(cfg.general.genome_directory)
             genome_name = genome_directory.rsplit("/", 1)[1]
             prefix_name = genome_directory + "/" + genome_name
             gff_file = prefix_name + ".gff"
+
             gff = GFF3(gff_file)
             df_gff = gff.df                   # This takes one minute on eukaryotes. No need to
             valid_features = gff.features     # about 3 seconds
@@ -272,8 +272,8 @@ def main(args=None):
             fc_type = cfg.feature_counts.feature
             fc_attr = cfg.feature_counts.attribute
 
-            logger.info("Checking your input GFF file and feature counts " + 
-                        f"options. You chose '{fc_type}' feature and '{fc_attr}' attribute")
+            logger.info("Checking your input GFF file and feature counts options.")
+            logger.info(f"You chose '{fc_type}' feature and '{fc_attr}' attribute")
             # if only one feature (99% of the projet)
             if "," not in fc_type:
                 fc_types = [fc_type]
@@ -284,7 +284,7 @@ def main(args=None):
                 cfg.general.custom_gff = 'custom.gff'
 
             for fc_type in fc_types:
-                S = sum(df_gff['type'] == fc_type)
+                S = sum(df_gff['genetic_type'] == fc_type)
                 if S == 0:
                     logger.error("Found 0 entries for feature '{}'. Please choose a valid feature from: {}".format(fc_type, valid_features))
                     sys.exit()
@@ -292,7 +292,7 @@ def main(args=None):
                     logger.info("Found {} '{}' entries".format(S, fc_type))
 
                 # now we check the attribute:
-                dd = df_gff.query("type==@fc_type")
+                dd = df_gff.query("genetic_type==@fc_type")
                 attributes = [y for x in dd.attributes for y in x.keys()]
                 S = attributes.count(fc_attr)
                 if S == 0:
@@ -311,7 +311,6 @@ fc_attr, len(unique)))
                         if extra_attr not in set(attributes):
                             logger.error("{} not found in the GFF attributes. Try one of {}".format(extra_attr, set(attributes)))
                             sys.exit()
-            
 
 
     # finalise the command and save it; copy the snakemake. update the config

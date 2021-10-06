@@ -22,6 +22,10 @@ mapping:
             "options":
                 type: str
                 required: True
+            "threads":
+                type: int
+                required: True
+                range: { min: 1 }
 
     "general":
         type: map
@@ -29,7 +33,7 @@ mapping:
             "aligner":
                 type: str
                 required: True
-                enum: ["bowtie2", "bowtie1", "star", "salmon"]
+                enum: ["bowtie2", "star", "salmon"]
             "genome_directory":
                 required: True
                 type: str
@@ -43,15 +47,6 @@ mapping:
     "requirements":
         type: str
 
-    "sequencing":
-        type: map
-        mapping:
-            "platform":
-                type: str
-            "instrument":
-                type: str
-            "flowcell":
-                type: str
 
     "trimming":
       type: map
@@ -137,10 +132,13 @@ mapping:
         mapping:
             "options":
                 type: str
-            "output_directory":
+            "modules":
                 type: str
             "config_file":
                 type: str
+            "input_directory":
+                type: str
+
 
     "feature_counts":
         type: map
@@ -256,7 +254,8 @@ mapping:
                 type: bool
             "bed_file":
                 type: str
-    'bowtie2_mapping_ref':
+
+    'bowtie2':
         type: map
         mapping:
             "options":
@@ -267,6 +266,17 @@ mapping:
                 range: { min: 1}
             "genome_size_larger_than_4gb":
                 type: bool
+
+    'bowtie2_index':
+        type: map
+        mapping:
+            "options":
+                type: str
+            "threads":
+                type: int
+                required: True
+                range: { min: 1}
+
     'star_mapping':
         type: map
         mapping:

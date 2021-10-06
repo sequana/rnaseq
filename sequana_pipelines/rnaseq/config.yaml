@@ -17,16 +17,16 @@ input_pattern: '*fastq.gz'
 #
 # :Parameters:
 #
-# - aligner: either star, bowtie or bowtie2. 
+# - aligner: either star or bowtie2. 
 # - genome_directory: directory where all indexes are written.
 # - rRNA_contaminant: path to an existing fasta file for ribosomal RNA (to be found in
 #   genome_directory)
 # - rRNA_feature: if rRNA_contaminant is not provided, ribosomal RNA will be extract
 #     from GFF using this feature name. It must be found. 
 general:
-    aligner: salmon
-    genome_directory: Lepto
-    contaminant_file: ''
+    aligner: bowtie2
+    genome_directory: 
+    contaminant_file:
     rRNA_feature: rRNA
     custom_gff: ''
 
@@ -39,21 +39,6 @@ general:
 requirements: ''
 
 
-##################################################################
-# sequencing information. These informations will be inserted as
-# read group in BAM files
-#
-# :Parameters:
-#
-# - platform: Name of the sequencing platform
-# - instrument: name ot the instrument type
-# - flowcell: flowcell ID
-sequencing:
-    platform: Illumina
-    instrument: undefined
-    flowcell: undefined
-
-
 #################################################################
 # FastQC section
 #
@@ -64,7 +49,7 @@ sequencing:
 fastqc:
     skip_fastqc_samples: true
     options: --nogroup
-
+    threads: 4
 
 #######################################################################
 # Quality trimming and adapter removal
@@ -158,7 +143,7 @@ trimming:
 # - nreads: no need to analyse all data to estimate the ribosomal content. 
 #   analyse 100,000 reads by default. Set to -1 to ignore and analyse all data
 bowtie1_mapping_rna:
-    # remove in v1.20 and ste automatically to on if rRNA provided
+    # remove in v1.20 and set automatically to on/off if rRNA/fasta provided
     # do: true
     options: ''
     threads: 4
@@ -199,11 +184,15 @@ bowtie1_mapping_ref:
 # - options: any options recognised by bowtie2 tool
 # - threads: number of threads to be used
 #
-bowtie2_mapping_ref:
+bowtie2:
     #options: "--dovetail --no-mixed --no-discordant " for paired-end data
     options: ''
     threads: 4
     genome_size_larger_than_4gb: false
+
+bowtie2_index:
+    options: ''
+    threads: 4
 
 
 salmon_mapping:
@@ -330,16 +319,16 @@ mark_duplicates:
 # - do: if unchecked, this rule is ignored
 # - ref: Reference Genome in fasta format
 # - gtf: GTF File defining transcripts (must end in '.gtf')
-# - BWArRNA: Use an on the fly BWA alignment for estimating
-#            rRNA content. The value should be the rRNA
-#            reference fasta.
+#        You can use the 'sequana gff-to-gtf input.gff' command
 # - options: any options recognised by RNA-seQC tool
 rnaseqc:
     do: false
     gtf_file: ''
     options: --coverage
 
+
 # if be_file not provided, try to create one on the fly
+# needs mark_duplicates
 rseqc:
     do: false
     bed_file: ''
@@ -356,8 +345,10 @@ rseqc:
 # - config_file: by default, we use sequana RNA-seq multiqc_config file. 
 #       If you want your own multiqc, fill this entry
 multiqc:
-    options: -f  -x *_init_* -x *left_kept_reads* -x *fastqc_samples* -e htseq -e
-        slamdunk
-    output_directory: multiqc
-    config_file: multiqc_config.yaml
+    options: "-p -f -x *_init_*"
+    modules: 
+    input_directory: "."
+    config_file: "multiqc_config.yaml" 
+
+
 

@@ -66,18 +66,23 @@ extra_fn_clean_exts:
     - type: remove
       pattern: '.sorted'
     - type: regex
-      pattern: '^Sample_\d+'
+      pattern: '_S\d+'
 
 
 # Ignore these files / directories / paths when searching for logs
 fn_ignore_files:
     - .DS_Store
+
 fn_ignore_dirs:
     - .sequana
     - .snakemake
+    - multiqc
+    - logs
+
+# We want to ignore the 3 strand case to use only the final ones in
+# post_analysis/feature_counts
 fn_ignore_paths:
-    - '*/path/to/*_files/'
-    - "*/feature_counts_*/"
+    - "*/feature_counts/*"
 
 # Ignore files larger than this when searcing for logs (bytes)
 log_filesize_limit: 5000000
@@ -106,12 +111,9 @@ max_table_rows: 500              # Swap tables for a beeswarm plot above this
 sp:
     star:
         fn: '*Log.final.out'
-    trimmomatic:
-        contents: 'Trimmomatic'
     cutadapt:
         fn: 'cutadapt.txt'
-    # with newer version of rna_seqc, no need for those custom patterns, which
-    # fail
+
     #rna_seqc/metrics:
     #    fn: "*metrics.tsv"
     #rna_seqc/coverage:
