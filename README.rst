@@ -135,6 +135,7 @@ Version   Description
             analysis
           * --indexing and --force-indexing  options not required anymore. 
             Indexing will be done automatically and not redone if present.
+          * Use of the new sequana-wrappers repository
 0.13.0    * Major update to use the new sequana version and the RNADiff tools.
           * remove fastq_screen. One can use sequana_multitax for taxonomic
             content and contamination.
