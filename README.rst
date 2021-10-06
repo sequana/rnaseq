@@ -1,3 +1,17 @@
+
+
+.. image:: https://badge.fury.io/py/sequana-rnaseq.svg
+     :target: https://pypi.python.org/pypi/sequana_rnaseq
+
+.. image:: http://joss.theoj.org/papers/10.21105/joss.00352/status.svg
+    :target: http://joss.theoj.org/papers/10.21105/joss.00352
+    :alt: JOSS (journal of open source software) DOI
+
+.. image:: https://github.com/sequana/rnaseq/actions/workflows/main.yml/badge.svg
+   :target: https://github.com/sequana/rnaseq/actions/workflows    
+
+
+
 This is is the **rnaseq** pipeline from the `Sequana <https://sequana.readthedocs.org>`_ project
 
 :Overview: RNASeq analysis from raw data to feature counts
