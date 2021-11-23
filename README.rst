@@ -143,6 +143,7 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.14.2    * fix feature counts plots missing in multiqc results
 0.14.1    * fix regression bug introduced in snakemake 6.9.0
 0.14.0    * Allow the aligners to have dedicated index for each version in the
             same genome directory.

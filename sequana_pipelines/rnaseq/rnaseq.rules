@@ -18,6 +18,10 @@ from sequana_pipetools import snaketools as sm
 import sequana.featurecounts as fc
 from sequana import GFF3
 
+# for development when testing sequana-wrappers. DO NOT change
+sequana_wrapper_branch = "main"
+
+
 # ========================================================= The main config file
 #
 configfile: "config.yaml"
@@ -40,15 +44,12 @@ if config['general']['aligner'] == 'salmon':
         input:
             "multiqc/multiqc_report.html",
             ".sequana/rulegraph.svg",
-            "post_analysis/all_features.out"
 else:
     manager.globals['strand_summary'] = "outputs/strand_summary.csv"
     rule rnaseq:
         input:
             "multiqc/multiqc_report.html",
             ".sequana/rulegraph.svg",
-            #manager.globals['strand_summary'],
-            "post_analysis/all_features.out"
 
 
 # ========================================= Define genome directory and inputs
@@ -394,8 +395,6 @@ if manager.config.general.rRNA_feature or manager.config.general.contaminant_fil
         wrapper:
             "main/wrappers/bowtie1/align"
 
-    expected_output.extend(expand("{sample}/bowtie1_mapping_rna/{sample}_rRNA.sorted.bam",
-        sample=manager.samples))
 
     rule fix_bowtie1_log:
         input:
@@ -440,9 +439,6 @@ if manager.config.general.aligner == "bowtie2":
         wrapper:
             "main/wrappers/bowtie2/align"
 
-    expected_output.extend(
-        expand("{sample}/bowtie2/{sample}.sorted.bam", sample=manager.samples)
-    )
     __mapping_output = "{sample}/bowtie2/{sample}.sorted.bam"
 
 
@@ -461,7 +457,6 @@ elif manager.config.general.aligner == "star":
     __star_mapping__genome_dir = manager.getname("star_mapping", "_star_2nd_pass")
     __star_mapping__splice_file = manager.getname("star_mapping", "_init_SJ.out.tab")
     include: sm.modules["star_mapping"]
-    expected_output.extend(expand(__star_mapping__sort, sample=manager.samples))
     __mapping_output = __star_mapping__sort
 
 
@@ -669,6 +664,7 @@ rule merge_feature_counts:
         from sequana.featurecounts import FeatureCountMerger
         fcm = FeatureCountMerger(fof=input)
         fcm.to_tsv(output[0])
+expected_output += ["post_analysis/all_features.out"]
 
 # ================================================================== rseqc diag tool
 
@@ -833,8 +829,6 @@ onsuccess:
         extra_files_to_remove=["requirements.txt"],
         extra_dirs_to_remove=[".genomes", "tmp", "logs"])
     manager.clean_multiqc("multiqc/multiqc_report.html")
-
-
 
     # ------------------------------------------- RNADIFF
     # 1. save data for the RNADiff analysis

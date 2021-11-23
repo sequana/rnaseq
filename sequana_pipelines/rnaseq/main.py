@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 #  This file is part of Sequana software
 #
@@ -181,7 +180,7 @@ def main(args=None):
 
     logger.setLevel(options.level)
     logger.name = "sequana_rnaseq"
-    logger.info(f"Welcome to sequana_rnaseq pipeline.")
+    logger.info(f"#Welcome to sequana_rnaseq pipeline.")
 
     # fill the config file with input parameters
     if options.from_project is None:
