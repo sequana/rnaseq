@@ -8,7 +8,7 @@
     :alt: JOSS (journal of open source software) DOI
 
 .. image:: https://github.com/sequana/rnaseq/actions/workflows/main.yml/badge.svg
-   :target: https://github.com/sequana/rnaseq/actions/workflows    
+   :target: https://github.com/sequana/rnaseq/actions/workflows/main.yaml 
 
 
 
