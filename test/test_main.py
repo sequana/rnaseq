@@ -13,7 +13,7 @@ saccer3 = f"{test_dir}/data/Saccer3/"
 
 def test_standalone_subprocess():
     directory = tempfile.TemporaryDirectory()
-    cmd = """sequana_pipelines_rnaseq --input-directory {} --working-directory {} """.format(
+    cmd = """sequana_rnaseq --input-directory {} --working-directory {} """.format(
         sharedir, directory.name)
     subprocess.call(cmd.split())
 
@@ -38,7 +38,7 @@ def test_standalone_script_contaminant():
     m.main()
 
 def test_version():
-    cmd = "sequana_pipelines_rnaseq --version"
+    cmd = "sequana_rnaseq --version"
     subprocess.call(cmd.split())
 
 
