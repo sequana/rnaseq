@@ -72,6 +72,8 @@ extra_fn_clean_exts:
 # Ignore these files / directories / paths when searching for logs
 fn_ignore_files:
     - .DS_Store
+    - slurm*out
+    - "*.js"
 
 fn_ignore_dirs:
     - .sequana

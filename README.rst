@@ -34,6 +34,13 @@ Then, just install this package::
 
     pip install sequana_rnaseq
 
+For all dependencies (see hereafter), you can use conda. Another experimental solution is to use damona::
+
+    pip install damona 
+    damona install sequana_tools
+
+This will install all required dependencies.
+
 
 Usage
 ~~~~~
@@ -143,6 +150,9 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.15.0    * fix typo reported in https://github.com/sequana/rnaseq/issues/12
+          * fix feature counts plots not showing anymore
+          * Script for differential analysis is now in the main pipeline
 0.14.2    * fix feature counts plots missing in multiqc results
 0.14.1    * fix regression bug introduced in snakemake 6.9.0
 0.14.0    * Allow the aligners to have dedicated index for each version in the

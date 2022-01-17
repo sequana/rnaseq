@@ -7,7 +7,7 @@
 # If input_directory provided, use it otherwise if input_pattern provided,
 # use it, otherwise use input_samples.
 # ============================================================================
-input_directory: /home/cokelaer/Work/github/sequana_pipelines/rnaseq/sequana_pipelines/rnaseq/data/Lepto
+input_directory: 
 input_readtag: _R[12]_
 input_pattern: '*fastq.gz'
 # =========================================== Sections for the users

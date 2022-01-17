@@ -4,8 +4,8 @@ from setuptools.command.install import install
 import subprocess
 
 _MAJOR               = 0
-_MINOR               = 14
-_MICRO               = 2
+_MINOR               = 15
+_MICRO               = 0
 version              = '%d.%d.%d' % (_MAJOR, _MINOR, _MICRO)
 release              = '%d.%d' % (_MAJOR, _MINOR)
 
@@ -21,6 +21,7 @@ metainfo = {
           'Development Status :: 5 - Production/Stable',
           'Intended Audience :: Education',
           'Intended Audience :: End Users/Desktop',
+          'Intended Audience :: Developers',
           'Intended Audience :: Science/Research',
           'License :: OSI Approved :: BSD License',
           'Operating System :: OS Independent',
@@ -66,9 +67,7 @@ setup(
     classifiers      = metainfo['classifiers'],
 
     # package installation
-    packages = ["sequana_pipelines.rnaseq",
-        'sequana_pipelines.rnaseq.data' ,
-        'sequana_pipelines.rnaseq.data.Saccer3' ],
+    packages = ["sequana_pipelines.rnaseq"],
 
     install_requires = open("requirements.txt").read(),
 
@@ -77,13 +76,11 @@ setup(
     package_data = {
         '': ['*.yaml', "*.rules", "*.json", "requirements.txt", "*png",
              "fastq_screen.conf"],
-        'sequana_pipelines.rnaseq.data' : ['*.*'], 
         },
 
     zip_safe=False,
 
     entry_points = {'console_scripts':[
-        'sequana_pipelines_rnaseq=sequana_pipelines.rnaseq.main:main',
         'sequana_rnaseq=sequana_pipelines.rnaseq.main:main']
     },
 
