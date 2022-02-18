@@ -431,8 +431,7 @@ if manager.config.general.aligner == "bowtie2":
             fastq=__clean_fastq__output,
             bt2=bowtie2_index_output
         output:
-            bam="{sample}/bowtie2/{sample}.bam",
-            sorted="{sample}/bowtie2/{sample}.sorted.bam",
+            bam="{sample}/bowtie2/{sample}.sorted.bam",
         log:
             "{sample}/bowtie2/{sample}.log"
         params:
