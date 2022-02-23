@@ -26,10 +26,9 @@ configfile: "config.yaml"
 # ================================================== The sequana pipeline manager
 #
 manager = sm.PipelineManager("rnaseq", config)
-manager.setup(globals(), mode="warning")
 config = manager.config
 
-
+expected_output = []
 # ========================================= Define output of the pipeline
 #
 manager.globals = {}
