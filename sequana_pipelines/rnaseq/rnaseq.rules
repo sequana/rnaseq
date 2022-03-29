@@ -193,7 +193,6 @@ if manager.config.general.aligner == "bowtie2":
          bowtie2_version = ""
 
     bowtie2_index = f"{genome_directory}/bowtie2{bowtie2_version}/{genome_name}"
-    bowtie2_index_output = f"{bowtie2_index}.1.{bt2_ext}"
 
     if os.path.exists(f"{bowtie2_index}.1.{bt2_ext}"):
         pass # index exists, no need to do it, everything should be fine
@@ -202,7 +201,11 @@ if manager.config.general.aligner == "bowtie2":
             input:
                 reference=__fasta_file__
             output:
-                bowtie2_index_output
+                multiext(
+                    bowtie2_index,
+                    ".1.bt2", ".2.bt2", ".3.bt2", ".4.bt2", ".rev.1.bt2", ".rev.2.bt2",
+                ),
+
             log:
                 "logs/indexing/bowtie2_genome.log"
             params:
@@ -428,13 +431,21 @@ if manager.config.general.aligner == "bowtie2":
     rule bowtie2_mapping:
         input:
             fastq=__clean_fastq__output,
-            bt2=bowtie2_index_output
+            idx=multiext(
+            bowtie2_index,
+            ".1.bt2",
+            ".2.bt2",
+            ".3.bt2",
+            ".4.bt2",
+            ".rev.1.bt2",
+            ".rev.2.bt2",
+        ),
+
         output:
             bam="{sample}/bowtie2/{sample}.sorted.bam",
         log:
             "{sample}/bowtie2/{sample}.log"
         params:
-            index=bowtie2_index,
             options=config["bowtie2"]["options"], 
         threads: config["bowtie2"]["threads"]
         wrapper:
