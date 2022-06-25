@@ -40,7 +40,7 @@ jobs:
     - name: conda
       run: |
         conda install -c conda-forge mamba --quiet
-        mamba install -c bioconda -c conda-forge --quiet -y bowtie samtools bamtools bedtools bowtie2 fastqc subread fastp deeptools
+        mamba install -c bioconda -c conda-forge -c bioconda --quiet -y bowtie samtools bamtools bedtools bowtie2 fastqc subread fastp deeptools
 
     - name: Install dependencies
       run: |
