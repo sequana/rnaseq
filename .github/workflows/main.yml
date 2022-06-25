@@ -13,7 +13,7 @@ jobs:
     strategy:
       max-parallel: 5
       matrix:
-        python: [3.7,3.8]
+        python: [3.7,3.8,3.9]
       fail-fast: false
 
 
@@ -40,7 +40,7 @@ jobs:
     - name: conda
       run: |
         conda install -c conda-forge mamba --quiet
-        #mamba install -c bioconda -c conda-forge --quiet -y bowtie samtools bamtools
+        mamba install -c bioconda -c conda-forge --quiet -y bowtie samtools bamtools bedtools bowtie2 fastqc subread fastp deeptools
 
     - name: Install dependencies
       run: |

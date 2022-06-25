@@ -9,3 +9,5 @@
 - gffread
 - salmon
 - Rscript
+- fastp
+- fastqc
