@@ -7,7 +7,7 @@
 # If input_directory provided, use it otherwise if input_pattern provided,
 # use it, otherwise use input_samples.
 # ============================================================================
-input_directory: 
+input_directory:
 input_readtag: _R[12]_
 input_pattern: '*fastq.gz'
 # =========================================== Sections for the users
@@ -25,7 +25,7 @@ input_pattern: '*fastq.gz'
 #     from GFF using this feature name. It must be found. 
 general:
     aligner: bowtie2
-    genome_directory: 
+    genome_directory:
     contaminant_file:
     rRNA_feature: rRNA
     custom_gff: ''

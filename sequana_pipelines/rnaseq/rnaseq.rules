@@ -264,8 +264,8 @@ elif manager.config.general.aligner == "salmon":
 if not config['fastqc']['skip_fastqc_samples']:
     __fastqc__input = manager.getrawdata()
     __fastqc__output = "{sample}/fastqc/fastqc.done"
-    __fastqc__log = "{samples}/fastqc/fastqc.log"
-    __fastqc__wkdir = "{samples}/fastqc/"
+    __fastqc__log = "{sample}/fastqc/fastqc.log"
+    __fastqc__wkdir = "{sample}/fastqc/"
     include: sm.modules['fastqc']
     expected_output.extend(expand(__fastqc__output, sample=manager.samples))
 
@@ -451,9 +451,6 @@ if manager.config.general.aligner == "bowtie2":
         wrapper:
             "main/wrappers/bowtie2/align"
 
-    #expected_output.extend(
-    #        expand("{sample}/bowtie2/{sample}.sorted.bam", sample=manager.samples)
-    #    )
     __mapping_output = "{sample}/bowtie2/{sample}.sorted.bam"
 
 
@@ -490,12 +487,19 @@ elif manager.config.general.aligner == "salmon":
 # The input is the output of the mapping 
 # Add Read group on BAM files
 if manager.config.general.aligner not in ['salmon']:
-    __add_read_group__input = __mapping_output
-    __add_read_group__output = "{sample}/add_read_group/{sample}.bam"
-    __add_read_group__log_err = "{sample}/add_read_group/log.err"
-    __add_read_group__log_std ="{sample}/add_read_group/log.out"
-    __add_read_group__rg = "ID={sample} LB=undefined PL=Illumina PU=undefined SM={sample}"
-    include: sm.modules["add_read_group"]
+    rule add_read_group:
+        input:
+            __mapping_output
+        output:
+            "{sample}/add_read_group/{sample}.sorted.bam"
+        log:
+            "{sample}/add_read_group/{sample}.log"
+        params:
+            options=config["add_read_group"]["options"],
+            SM="{sample}"
+        wrapper:
+            f"{sequana_wrapper_branch}/wrappers/add_read_group"
+
 
 
 # we always add read group so input is the read group output
@@ -504,9 +508,21 @@ if manager.config.general.aligner not in ['salmon']:
 # if Paired, most likely a PCR origin.
 # Mark duplicates
 if config["mark_duplicates"]["do"]:
-    __mark_duplicates__input = __add_read_group__output
-    include: sm.modules["mark_duplicates"]
-    __final_bam__ = "{sample}/mark_duplicates/{sample}.bam"
+    rule mark_duplicates:
+        input:
+            __add_read_group__output
+        output:
+            bam = "{sample}/mark_duplicates/{sample}.sorted.markdup.bam",
+            metrics = "{sample}/mark_duplicates/{sample}.sorted.markdup.metrics",
+        log:
+            out = "{sample}/mark_duplicates/log.out",
+            err = "{sample}/mark_duplicates/log.err"
+        params:
+            remove_dup = "false",
+            tmpdir = "{sample}/mark_duplicates/tmp"
+        wrapper:
+            "main/wrappers/mark_duplicates"
+    __final_bam__ = "{sample}/mark_duplicates/{sample}.sorted.markdup.bam"
 elif manager.config.general.aligner not in ['salmon']:
     __final_bam__   = __add_read_group__output
 else:

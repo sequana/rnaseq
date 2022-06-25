@@ -150,6 +150,8 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.15.2    * Fix bowtie2 rule to use new wrappers. Use wrappers in 
+            add_read_group and mark_duplicates
 0.15.1    * Adapt to new bowtie2 align wrapper
 0.15.0    * fix typo reported in https://github.com/sequana/rnaseq/issues/12
           * fix feature counts plots not showing anymore
