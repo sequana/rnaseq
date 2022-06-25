@@ -47,7 +47,7 @@ requirements: ''
 # - options: string with any valid FastQC options
 #
 fastqc:
-    skip_fastqc_samples: true
+    skip_fastqc_raw: true
     options: --nogroup
     threads: 4
 
@@ -309,7 +309,8 @@ mark_duplicates:
     tmpdir: ./tmp/
     threads: 4
 
-
+add_read_group:
+    options:
 
 #############################################################################
 # RNA-SeQC allows to compute a series of quality control metrics for RNA-seq data

@@ -18,6 +18,8 @@ from sequana_pipetools import snaketools as sm
 import sequana.featurecounts as fc
 from sequana import GFF3
 
+sequana_wrapper_branch="main"
+
 # ========================================================= The main config file
 #
 configfile: "config.yaml"
@@ -164,7 +166,7 @@ if manager.config.general.contaminant_file or manager.config.general.rRNA_featur
             options=""
         threads: 2
         wrapper:
-            "main/wrappers/bowtie1/build"
+            f"{sequana_wrapper_branch}/wrappers/bowtie1/build"
 
 
 # ============================================================================ bowtie2 index
@@ -213,7 +215,7 @@ if manager.config.general.aligner == "bowtie2":
             threads:
                 config["bowtie2_index"]["threads"]
             wrapper:
-                "main/wrappers/bowtie2/build"
+                f"{sequana_wrapper_branch}/wrappers/bowtie2/build"
 
 
 # ============================================================================ star index
@@ -261,13 +263,22 @@ elif manager.config.general.aligner == "salmon":
 
 # ===================================================================== FASTQC on input data set
 #
-if not config['fastqc']['skip_fastqc_samples']:
-    __fastqc__input = manager.getrawdata()
-    __fastqc__output = "{sample}/fastqc/fastqc.done"
-    __fastqc__log = "{sample}/fastqc/fastqc.log"
-    __fastqc__wkdir = "{sample}/fastqc/"
-    include: sm.modules['fastqc']
-    expected_output.extend(expand(__fastqc__output, sample=manager.samples))
+if not config['fastqc']['skip_fastqc_raw']:
+    rule fastqc_raw:
+        input:
+            manager.getrawdata()
+        output:
+            done = "{sample}/fastqc_raw/fastqc.done"
+        params:
+            options= config["fastqc"]["options"],
+            working_directory= "{sample}/fastqc_raw/"
+        threads: config["fastqc"]["threads"]
+        log:
+            "{sample}/fastqc_raw/fastqc.log"
+        wrapper:
+            f"{sequana_wrapper_branch}/wrappers/fastqc"
+
+    expected_output.extend(expand("{sample}/fastqc_raw/fastqc.done", sample=manager.samples))
 
 
 # ================================================================== trimming
@@ -328,7 +339,7 @@ rule fastqc_clean:
     log:
         "{sample}/fastqc_clean/fastqc.log"
     wrapper:
-        "main/wrappers/fastqc"
+        f"{sequana_wrapper_branch}/wrappers/fastqc"
 expected_output.extend(expand("{sample}/fastqc_clean/fastqc.done", sample=manager.samples))
 
 
@@ -396,7 +407,7 @@ if manager.config.general.rRNA_feature or manager.config.general.contaminant_fil
             options=""
         threads: config['bowtie1_mapping_rna']['threads']
         wrapper:
-            "main/wrappers/bowtie1/align"
+            f"{sequana_wrapper_branch}/wrappers/bowtie1/align"
 
     #expected_output.extend(expand("{sample}/bowtie1_mapping_rna/{sample}_rRNA.sorted.bam",
     #    sample=manager.samples))
@@ -449,7 +460,7 @@ if manager.config.general.aligner == "bowtie2":
             options=config["bowtie2"]["options"], 
         threads: config["bowtie2"]["threads"]
         wrapper:
-            "main/wrappers/bowtie2/align"
+            f"{sequana_wrapper_branch}/wrappers/bowtie2/align"
 
     __mapping_output = "{sample}/bowtie2/{sample}.sorted.bam"
 
@@ -510,7 +521,7 @@ if manager.config.general.aligner not in ['salmon']:
 if config["mark_duplicates"]["do"]:
     rule mark_duplicates:
         input:
-            __add_read_group__output
+            "{sample}/add_read_group/{sample}.sorted.bam"
         output:
             bam = "{sample}/mark_duplicates/{sample}.sorted.markdup.bam",
             metrics = "{sample}/mark_duplicates/{sample}.sorted.markdup.metrics",
@@ -521,10 +532,10 @@ if config["mark_duplicates"]["do"]:
             remove_dup = "false",
             tmpdir = "{sample}/mark_duplicates/tmp"
         wrapper:
-            "main/wrappers/mark_duplicates"
+            f"{sequana_wrapper_branch}/wrappers/mark_duplicates"
     __final_bam__ = "{sample}/mark_duplicates/{sample}.sorted.markdup.bam"
 elif manager.config.general.aligner not in ['salmon']:
-    __final_bam__   = __add_read_group__output
+    __final_bam__   = "{sample}/add_read_group/{sample}.sorted.bam"
 else:
     __final_bam__ = []
 
@@ -612,7 +623,7 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
         log:
             "{sample}/feature_counts/{strand}/feature_counts.log"
         wrapper:
-            "main/wrappers/feature_counts"
+            f"{sequana_wrapper_branch}/wrappers/feature_counts"
 
 
     # ===================== guessing the strand 
@@ -827,7 +838,7 @@ rule multiqc:
     log:
         "multiqc/multiqc.log"
     wrapper:
-       "main/wrappers/multiqc"
+       f"{sequana_wrapper_branch}/wrappers/multiqc"
 
 # ========================================================== rulegraph
 
@@ -839,7 +850,7 @@ rule rulegraph:
         mapper = {"multiqc": "../multiqc/multiqc_report.html"},
         configname = "config.yaml"
     wrapper:
-        "main/wrappers/rulegraph"
+        f"{sequana_wrapper_branch}/wrappers/rulegraph"
 
 
 

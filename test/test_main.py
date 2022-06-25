@@ -78,3 +78,22 @@ def test_standalone_script_wrong_triming():
         assert False
     except SystemExit:
         assert True
+
+
+
+def test_full():
+
+    with tempfile.TemporaryDirectory() as directory:
+        wk = directory
+
+        cmd = f"sequana_rnaseq --input-directory {sharedir} --genome-directory {saccer3} --aligner bowtie2 --working-directory {wk} --force"
+        subprocess.call(cmd.split())
+
+
+        cmd = "snakemake -s rnaseq.rules --wrapper-prefix https://raw.githubusercontent.com/sequana/sequana-wrappers/  -p --cores 2 "
+
+        stat = subprocess.call(cmd.split(), cwd=wk)
+
+        assert os.path.exists(wk + "/summary.html")
+        assert os.path.exists(wk + "/multiqc/multiqc_report.html")
+

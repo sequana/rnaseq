@@ -16,7 +16,7 @@ mapping:
     "fastqc":
         type: map
         mapping:
-            "skip_fastqc_samples":
+            "skip_fastqc_raw":
                 type: bool
                 required: True
             "options":
@@ -47,6 +47,11 @@ mapping:
     "requirements":
         type: str
 
+    "add_read_group":
+      type: map
+      mapping:
+        "options":
+          type: str
 
     "trimming":
       type: map
