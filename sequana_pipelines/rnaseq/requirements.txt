@@ -11,3 +11,5 @@
 - Rscript
 - fastp
 - fastqc
+- samtools
+- bamtools

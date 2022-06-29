@@ -1,0 +1,14 @@
+cutadapt
+picard
+bowtie
+bowtie2
+STAR
+subread
+bamtools
+samtools
+deeptools
+gffread
+salmon
+fastp
+fastqc
+bedtools
