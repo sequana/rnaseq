@@ -10,6 +10,13 @@
 input_directory:
 input_readtag: _R[12]_
 input_pattern: '*fastq.gz'
+
+# See sequana_pipetools.readthedocs.io for details about these 2 options
+# common prefixes are removed. addition prefixes may be removed here
+#extra_prefixes_to_strip = []
+# in special cases, sample names can be extracted with a pattern
+#sample_pattern: '{sample}.fastq.gz'
+
 # =========================================== Sections for the users
 
 #############################################################################
@@ -50,6 +57,8 @@ fastqc:
     skip_fastqc_raw: true
     options: --nogroup
     threads: 4
+    resources:
+        mem
 
 #######################################################################
 # Quality trimming and adapter removal

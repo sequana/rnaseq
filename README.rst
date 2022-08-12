@@ -32,7 +32,7 @@ You must install Sequana first::
 
 Then, just install this package::
 
-    pip install sequana_rnaseq
+    pip install sequana_fastqc --upgrade
 
 For all dependencies (see hereafter), you can use conda. Another experimental solution is to use damona::
 
@@ -47,8 +47,8 @@ Usage
 
 ::
 
-    sequana_pipelines_rnaseq --help
-    sequana_pipelines_rnaseq --input-directory DATAPATH --genome-directory genome --aligner star
+    sequana_rnaseq --help
+    sequana_rnaseq --input-directory DATAPATH --genome-directory genome --aligner star
 
 This creates a directory with the pipeline and configuration file. You will then need 
 to execute the pipeline::
@@ -61,7 +61,7 @@ retrieve the pipeline itself and its configuration files and then execute the pi
 
     snakemake -s rnaseq.rules -c config.yaml --cores 4 --stats stats.txt
 
-Or use `sequanix <https://sequana.readthedocs.io/en/master/sequanix.html>`_ interface.
+Or use `sequanix <https://sequana.readthedocs.io/en/main/sequanix.html>`_ interface.
 
 Requirements
 ~~~~~~~~~~~~
@@ -91,10 +91,10 @@ all dependencies for you::
     conda install -c anaconda qt pyqt>5
     pip install sequana
     pip install sequana_rnaseq
-    conda install --file https://raw.githubusercontent.com/sequana/rnaseq/master/conda.yaml
+    conda install --file https://raw.githubusercontent.com/sequana/rnaseq/main/conda.yaml
 
 
-.. image:: https://raw.githubusercontent.com/sequana/sequana_rnaseq/master/sequana_pipelines/rnaseq/dag.png
+.. image:: https://raw.githubusercontent.com/sequana/sequana_rnaseq/main/sequana_pipelines/rnaseq/dag.png
 
 
 Details
@@ -137,7 +137,7 @@ This produces a HTML repot summarizing you differential analysis.
 Rules and configuration details
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Here is the `latest documented configuration file <https://raw.githubusercontent.com/sequana/sequana_rnaseq/master/sequana_pipelines/rnaseq/config.yaml>`_
+Here is the `latest documented configuration file <https://raw.githubusercontent.com/sequana/sequana_rnaseq/main/sequana_pipelines/rnaseq/config.yaml>`_
 to be used with the pipeline. Each rule used in the pipeline may have a section in the configuration file. 
 
 

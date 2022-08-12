@@ -13,3 +13,4 @@
 - fastqc
 - samtools
 - bamtools
+- bedtools
