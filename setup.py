@@ -4,8 +4,8 @@ from setuptools.command.install import install
 import subprocess
 
 _MAJOR = 0
-_MINOR = 15
-_MICRO = 3
+_MINOR = 16
+_MICRO = 0
 version = "%d.%d.%d" % (_MAJOR, _MINOR, _MICRO)
 release = "%d.%d" % (_MAJOR, _MINOR)
 

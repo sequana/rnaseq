@@ -122,9 +122,50 @@ sp:
     #    fn: "*coverage.tsv"
 
 # Overwrite the defaults of which table columns are visible by default
+#
+read_count_prefix: ''
+read_count_multiplier: 1
+
 table_columns_visible:
     FastQC:
         percent_fails: False
         total_sequences: True
+        percent_gc: False
+    fastp:
+        pct_duplication: False
+        after_filtering_gc_content: False
+    Bowtie 1:
+        reads_aligned_percentage: False
+        reads_aligned: False
+    picard:
+        PERCENT_DUPLICATION: False
+
+top_modules:
+  - fastqc
+  - fastp
+  - bowtie1
+  - bowtie2
+  - salmon
+  - star
+  - featureCounts
+
+module_order:
+  - fastqc
+  - fastp
+  - rseqc
+  - markduplicates
+  - picard
+  - bowtie1
+  - bowtie2
+  - salmon
+  - star
+  - featureCounts
+
+remove_sections:
+  - fastqc_status_checks
+  - fastqc_per_base_n_content
+
+
 #fastqc_config:
 #fastqc_theoretical_gc: 'mm10_genome'
+#

@@ -16,7 +16,6 @@ import subprocess
 import sequana
 from sequana_pipetools import snaketools as sm
 import sequana.featurecounts as fc
-from sequana import GFF3
 
 sequana_wrapper_branch="main"
 
@@ -28,14 +27,13 @@ configfile: "config.yaml"
 # ================================================== The sequana pipeline manager
 #
 manager = sm.PipelineManager("rnaseq", config)
-config = manager.config
 
 expected_output = []
 # ========================================= Define output of the pipeline
 #
 manager.globals = {}
 
-if config['general']['aligner'] == 'salmon':
+if manager.config['general']['aligner'] == 'salmon':
     manager.globals['strand_summary'] = None
     rule rnaseq:
         input:
@@ -50,14 +48,12 @@ else:
             "multiqc/multiqc_report.html",
             ".sequana/rulegraph.svg",
             "post_analysis/rnadiff.sh",
-            #manager.globals['strand_summary'],
-	    #"post_analysis/all_features.out"
 
 
 # ========================================= Define genome directory and inputs
 # Make sure it is absolute
 #
-genome_directory = os.path.abspath(config["general"]["genome_directory"])
+genome_directory = os.path.abspath(manager.config["general"]["genome_directory"])
 genome_name = genome_directory.rsplit("/", 1)[1]
 
 __prefix_name__ = f"{genome_directory}/{genome_name}"
@@ -68,8 +64,8 @@ __gff_file__   = f"{__prefix_name__}.gff"
 # ================================================ Build custom GFF if required
 # If we have several features, we need to build a custom GFF file
 #
-if config['general']['custom_gff']:
-    __gff_file__   = config['general']['custom_gff']
+if manager.config['general']['custom_gff']:
+    __gff_file__   = manager.config['general']['custom_gff']
 assert os.path.exists(__gff_file__)
 
 # check existence of fasta and gff before starting;
@@ -110,6 +106,8 @@ if manager.config.general.contaminant_file:
             __bowtie1_index_rna__fasta
         output:
             __bowtie1_index_rna__fasta + ".fai"
+        container:
+            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
         shell:
             """
             samtools faidx {input[0]}
@@ -120,24 +118,27 @@ elif manager.config.general.rRNA_feature:
     # extract the rRNA feature from the GFF file. Build the corresponding FastA
     # file. if not found, a dummy FastA file with  AAAAAAAAAAAAAA is built
 
-    bowtie1_index_conta__input_reference = f"{__prefix_name__}_{config.general.rRNA_feature}.fa"
-    bowtie1_index_conta__input_gff = f"{__prefix_name__}_{config.general.rRNA_feature}.gff"
-    bowtie1_index_conta__output = f"{__prefix_name__}_{config.general.rRNA_feature}.1.ebwt"
+    bowtie1_index_conta__input_reference = f"{__prefix_name__}_{manager.config.general.rRNA_feature}.fa"
+    bowtie1_index_conta__input_gff = f"{__prefix_name__}_{manager.config.general.rRNA_feature}.gff"
+    bowtie1_index_conta__output = f"{__prefix_name__}_{manager.config.general.rRNA_feature}.1.ebwt"
     rule extract_fasta:
         input:
             fasta = __fasta_file__,
             gff = __gff_file__
         params:
-            feature = config.general.rRNA_feature
+            feature = config['general']['rRNA_feature']
         output:
             fasta = bowtie1_index_conta__input_reference,
             fai = bowtie1_index_conta__input_reference + ".fai",
             gff = bowtie1_index_conta__input_gff
         log:
             "logs/indexing/get_rRNA.log"
+        container:
+            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
         shell:
             """
-            gawk '{{ if ($3=="{params.feature}") print }}' {input.gff} > {output.gff}
+            # used to be gawk but awk is more generic.
+            awk '{{ if ($3=="{params.feature}") print }}' {input.gff} > {output.gff}
             if [ -s {output.gff} ]
             then
                 bedtools getfasta -fi {input.fasta} -bed {output.gff}  -fo {output.fasta}
@@ -165,6 +166,8 @@ if manager.config.general.contaminant_file or manager.config.general.rRNA_featur
         params:
             options=""
         threads: 2
+        container:
+            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
         wrapper:
             f"{sequana_wrapper_branch}/wrappers/bowtie1/build"
 
@@ -172,7 +175,7 @@ if manager.config.general.contaminant_file or manager.config.general.rRNA_featur
 # ============================================================================ bowtie2 index
 #
 if manager.config.general.aligner == "bowtie2":
-    if config['bowtie2']['genome_size_larger_than_4gb']:
+    if manager.config['bowtie2_mapping']['genome_size_larger_than_4gb']:
         bt2_ext = "bt2l"
     else:
         bt2_ext = "bt2"
@@ -214,6 +217,10 @@ if manager.config.general.aligner == "bowtie2":
                 options=config["bowtie2_index"]["options"]
             threads:
                 config["bowtie2_index"]["threads"]
+            container:
+                "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+            resources:
+                **config['bowtie2_index']['resources']
             wrapper:
                 f"{sequana_wrapper_branch}/wrappers/bowtie2/build"
 
@@ -230,15 +237,31 @@ elif manager.config.general.aligner  == "star":
          logger.warning(f"Could not determine STAR version. Index will be stored in {genome_directory}/star/")
          star_version = ""
 
-    __star_index__output_done = genome_directory +  f"/star{star_version}/SAindex"
-    __star_dir__ = genome_directory + f"/star{star_version}"
-    if os.path.exists(__star_index__output_done):
-        pass # index exists, no need to do it, everything should be fine
-    else:
-        __star_index__fasta =  __fasta_file__
-        __star_index__output_dir =  genome_directory + f"/star{star_version}"
-        __star_index__log = "logs/indexing/star_genome.log"
-        include: sm.modules["star_index"]
+
+    __star_index__dir__ = genome_directory + f"/star{star_version}"
+    __star_index__done =  f"{__star_index__dir__}/star.done"
+
+    if not os.path.exists(__star_index__done):
+
+        rule star_index:
+            input:
+                fasta =  __fasta_file__
+            output:
+                done = __star_index__done
+            params:
+                options= config['star_index']['options'],
+                wkdir= __star_index__dir__
+            threads:
+                config["star_index"]['threads']
+            log:
+                "logs/indexing/star_genome.log"
+            container:
+                "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+            resources:
+                **config['star_index']['resources']
+            wrapper:
+                f"{sequana_wrapper_branch}/wrappers/star/index"
+
 
 # ========================================================================== salmon
 #
@@ -251,19 +274,36 @@ elif manager.config.general.aligner == "salmon":
     except Exception:  # various type of exception may occur here
          logger.warning(f"Could not determine salmon version. Index will be stored in {genome_directory}/salmon/")
          salmon_version = ""
+
     __salmon_index__output_done = genome_directory + f"/salmon{salmon_version}/salmon.done"
-    __salmon_index__genome_dir =  genome_directory + f"/salmon{salmon_version}"
+
     if os.path.exists(__salmon_index__output_done):
         pass # index exists, no need to do it, everything should be fine
     else:
-        __salmon_index__fasta_input =  __fasta_file__
-        __salmon_index__gff_input =  __gff_file__
-        __salmon_index__log = "logs/indexing/salmon.log"
-        include: sm.modules["salmon_index"]
+        rule salmon_index:
+            input:
+                fasta=__fasta_file__,
+                gff=__gff_file__
+            output:
+                done= __salmon_index__output_done
+            threads:
+                config['salmon_index']['threads']
+            resources:
+                **config["salmon_mapping"]['resources']
+            params:
+                options=config['salmon_index']['options']
+            container:
+                "https://zenodo.org/record/5708843/files/salmon_1.3.0.img"
+            log:
+                "logs/salmon_indexing.log"
+            wrapper:
+                f"{sequana_wrapper_branch}/wrappers/salmon/index"
+
+
 
 # ===================================================================== FASTQC on input data set
 #
-if not config['fastqc']['skip_fastqc_raw']:
+if not manager.config['fastqc']['skip_fastqc_raw']:
     rule fastqc_raw:
         input:
             manager.getrawdata()
@@ -273,6 +313,8 @@ if not config['fastqc']['skip_fastqc_raw']:
             options= config["fastqc"]["options"],
             working_directory= "{sample}/fastqc_raw/"
         threads: config["fastqc"]["threads"]
+        container:
+            "https://zenodo.org/record/7015004/files/fastqc_0.11.9-py3.img"
         log:
             "{sample}/fastqc_raw/fastqc.log"
         wrapper:
@@ -338,6 +380,10 @@ rule fastqc_clean:
     threads: config["fastqc"]["threads"]
     log:
         "{sample}/fastqc_clean/fastqc.log"
+    resources:
+        **config["fastqc"]['resources']
+    container:
+        "https://zenodo.org/record/7015004/files/fastqc_0.11.9-py3.img"
     wrapper:
         f"{sequana_wrapper_branch}/wrappers/fastqc"
 expected_output.extend(expand("{sample}/fastqc_clean/fastqc.done", sample=manager.samples))
@@ -362,9 +408,12 @@ if int(config['bowtie1_mapping_rna']['nreads']) != -1:
     extra = int(config['bowtie1_mapping_rna']['nreads']) % 4
     config['bowtie1_mapping_rna']['nreads'] -= extra
 
+
 rule sample_rRNA:
-    input: __unpigz_R1__input
-    output: temp(__unpigz_R1__output)
+    input:
+        __unpigz_R1__input
+    output:
+        temp(__unpigz_R1__output)
     threads: 4
     params:
         nreads = int(config['bowtie1_mapping_rna']['nreads'])
@@ -405,7 +454,10 @@ if manager.config.general.rRNA_feature or manager.config.general.contaminant_fil
             "{sample}/bowtie1_mapping_rna/{sample}_bowtie1.log"
         params:
             options=""
-        threads: config['bowtie1_mapping_rna']['threads']
+        threads: 
+            config['bowtie1_mapping_rna']['threads']
+        container:
+            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
         wrapper:
             f"{sequana_wrapper_branch}/wrappers/bowtie1/align"
 
@@ -457,8 +509,13 @@ if manager.config.general.aligner == "bowtie2":
         log:
             "{sample}/bowtie2/{sample}.log"
         params:
-            options=config["bowtie2"]["options"], 
-        threads: config["bowtie2"]["threads"]
+            options=config["bowtie2_mapping"]["options"],
+        threads:
+            config["bowtie2_mapping"]["threads"]
+        container:
+            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+        resources:
+             **config['bowtie2_mapping']['resources']
         wrapper:
             f"{sequana_wrapper_branch}/wrappers/bowtie2/align"
 
@@ -468,34 +525,71 @@ if manager.config.general.aligner == "bowtie2":
 # ========================================================== star mapping
 elif manager.config.general.aligner == "star":
     # Mapper rna-star
-    __star_mapping__input = __clean_fastq__output
-    __star_mapping__index_done = __star_index__output_done
-    __star_mapping__index = __star_dir__
-    __star_mapping__ref = __fasta_file__
-    __star_mapping__logs = manager.getname("star_mapping", ".logs")
-    __star_mapping__output_prefix1 = manager.getname("star_mapping", "_init_")
-    __star_mapping__output_prefix2 = manager.getname("star_mapping", "_")
-    __star_mapping__read_groups = ""
-    __star_mapping__sort = manager.getname("star_mapping", "_Aligned.sortedByCoord.out.bam")
-    __star_mapping__genome_dir = manager.getname("star_mapping", "_star_2nd_pass")
-    __star_mapping__splice_file = manager.getname("star_mapping", "_init_SJ.out.tab")
-    include: sm.modules["star_mapping"]
-    expected_output.extend(expand(__star_mapping__sort, sample=manager.samples))
-    __mapping_output = __star_mapping__sort
 
+    rule star_mapping:
+        input:
+            fastq= __clean_fastq__output,
+            reference=__fasta_file__,
+            index= __star_index__done,
+        output:
+            bam = "{sample}/star_mapping/{sample}_Aligned.sortedByCoord.out.bam"
+        params:
+            prefix = "{sample}/star_mapping/{sample}",
+            legacy=True,
+        threads:
+            config['star_mapping']['threads']
+        log:
+            "{sample}/star_mapping/{sample}.log"
+        container:
+            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+        resources:
+            **config['star_mapping']['resources']
+        wrapper:
+            f"{sequana_wrapper_branch}/wrappers/star/align"
+
+
+    expected_output.extend(
+        expand(
+            "{sample}/star_mapping/{sample}_Aligned.sortedByCoord.out.bam",
+            sample=manager.samples
+            )
+    )
+
+    __mapping_output = "{sample}/star_mapping/{sample}_Aligned.sortedByCoord.out.bam"
+
+# ========================================================== salmon mapping
 
 elif manager.config.general.aligner == "salmon":
-    __salmon_mapping__input_fastq = __clean_fastq__output
+    # to be used later by salmon_to_features
     __salmon_mapping__output_counts = "{sample}/salmon_mapping/{sample}_quant.sf"
-    __salmon_mapping__logs = manager.getname("salmon_mapping", ".logs")
-    include: sm.modules["salmon_mapping"]
-    expected_output.extend(expand(__salmon_mapping__output_counts, sample=manager.samples))
-    # There is no BAM created 
+
+    rule salmon_mapping:
+        input:
+            fastq=__clean_fastq__output,
+            index=f"{genome_directory}/salmon{salmon_version}/salmon.done"
+        output:
+            quant="{sample}/salmon_mapping/{sample}_quant.sf"
+        params:
+            options=config['salmon_mapping']['options']
+        threads:
+            config['salmon_mapping']['threads']
+        resources:
+            **config["salmon_mapping"]['resources']
+        container:
+            "https://zenodo.org/record/5708843/files/salmon_1.3.0.img"
+        log:
+            "{sample}/salmon_mapping/salmon.log"
+        wrapper:
+            "add_salmon/wrappers/salmon/align"
+
+
+    expected_output.extend(expand("{sample}/salmon_mapping/{sample}_quant.sf", sample=manager.samples))
+    # There is no BAM created
     __mapping_output = None
 
 
 # ========================================================== add_read_group
-# The input is the output of the mapping 
+# The input is the output of the mapping
 # Add Read group on BAM files
 if manager.config.general.aligner not in ['salmon']:
     rule add_read_group:
@@ -508,6 +602,8 @@ if manager.config.general.aligner not in ['salmon']:
         params:
             options=config["add_read_group"]["options"],
             SM="{sample}"
+        container:
+            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
         wrapper:
             f"{sequana_wrapper_branch}/wrappers/add_read_group"
 
@@ -531,6 +627,10 @@ if config["mark_duplicates"]["do"]:
         params:
             remove_dup = "false",
             tmpdir = "{sample}/mark_duplicates/tmp"
+        container:
+            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+        resources:
+            **config['mark_duplicates']['resources']
         wrapper:
             f"{sequana_wrapper_branch}/wrappers/mark_duplicates"
     __final_bam__ = "{sample}/mark_duplicates/{sample}.sorted.markdup.bam"
@@ -541,12 +641,31 @@ else:
 
 
 # ====================================================================== generating bigwig files
-if manager.config.coverage.do is True and config['general']['aligner'] not in ['salmon']:
-    __bamCoverage__input = __final_bam__
-    __bamCoverage__log = manager.getname("bamCoverage", ".logs")
-    __bamCoverage__output = manager.getname("bamCoverage", ".norm.bw")
-    include: sm.modules["bamCoverage"]
-    expected_output.extend(expand(__bamCoverage__output, sample=manager.samples))
+if manager.config.bam_coverage.do is True and config['general']['aligner'] not in ['salmon']:
+
+    rule bam_coverage:
+        input: __final_bam__
+        output:
+            "{sample}/bam_coverage/{sample}.norm.bw"
+        params:
+            options = config['bam_coverage']["options"]
+        log:
+            "{sample}/bam_coverage/{sample}.log"
+        threads:
+            config['bam_coverage']['threads']
+        container:
+            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+        resources:
+            **config['bam_coverage']['resources']
+        wrapper:
+            f"{sequana_wrapper_branch}/wrappers/deeptools/bam_coverage"
+
+    expected_output.extend(
+        expand(
+            "{sample}/bam_coverage/{sample}.norm.bw",
+            sample=manager.samples
+            )
+    )
 
 
 # ============================================================= generating IGV plots
@@ -565,6 +684,8 @@ if manager.config.igvtools.do and config['general']['aligner'] not in ['salmon']
             "{sample}/igvtools/{sample}.log"
         params:
             chromSize=config['igvtools']['chrom_sizes_file']
+        container:
+            "https://zenodo.org/record/7022635/files/igvtools_2.12.0.img"
         threads: 4
         shell:
             """
@@ -620,6 +741,8 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
             strandness="{strand}"
         threads:
             config["feature_counts"]['threads']
+        container:
+            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
         log:
             "{sample}/feature_counts/{strand}/feature_counts.log"
         wrapper:
@@ -722,6 +845,7 @@ if config['rseqc']['do']:
             input: __gff_file__
             output: __bed__file
             run:
+                from sequana import GFF3
                 g = GFF3(input[0])
                 g.to_bed(output[0], 'Name')
 
@@ -739,6 +863,8 @@ if config['rseqc']['do']:
             paired="PE" if manager.paired else "SE"
         log:
             "{sample}/rseqc/{sample}.log"
+        container:
+            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
         shell:
             """
             # for paired data only
@@ -911,9 +1037,6 @@ onsuccess:
         extra_files_to_remove=["requirements.txt"],
         extra_dirs_to_remove=[".genomes", "tmp", "logs"])
     manager.clean_multiqc("multiqc/multiqc_report.html")
-
-
-
 
     # THE HTML REPORT is defined hereafter
     #

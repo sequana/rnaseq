@@ -150,6 +150,17 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.16.0    * star, salmon, bam_coverage are now in sequana wrappers, updated 
+            the pipeline accordingly
+          * updated config file and schema to include resources inside the 
+            config file (so as to use new --profile option)
+          * set singularity images in all rules
+          * star wrappers has changed significantly to use star 
+            recommandation. To keep using previous way, a legacy option
+            is available and set to True in this version.
+          * bamCoverage renamed in bam_coverage in the config file
+          * multiqc_config removed redundant information and ordered
+            the output in a coherent way (QC and then analysis)
 0.15.2    * Fix bowtie2 rule to use new wrappers. Use wrappers in 
             add_read_group and mark_duplicates
 0.15.1    * Adapt to new bowtie2 align wrapper
