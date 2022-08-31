@@ -3,7 +3,8 @@ name: Tests
 on:
   push:
     branches:
-      - master
+      - main
+      - dev
   pull_request:
     branches-ignore: []
   schedule:
@@ -37,13 +38,11 @@ jobs:
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
         echo $CONDA/bin >> $GITHUB_PATH
-        #conda update ruamel_yaml
 
     - name: conda
       run: |
-        conda install -c conda-forge --quiet 'mamba<0.24' python=${{ matrix.python }}
-        mamba install -c bioconda -c conda-forge --quiet  --file environment.yml 
-
+          conda install -c conda-forge -c bioconda --quiet -y python=${{ matrix.python }} bowtie 'samtools>1.7' bamtools bedtools bowtie2 fastqc subread fastp deeptools salmon star 'picard>2.20' gffread  
+          conda install -c conda-forge -y ncurses
     - name: Install dependencies
       run: |
         pip install coveralls pytest-cov pytest pytest-xdist

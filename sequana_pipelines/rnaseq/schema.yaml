@@ -26,6 +26,10 @@ mapping:
                 type: int
                 required: True
                 range: { min: 1 }
+            "resources":
+                type: any
+                required: true
+
 
     "general":
         type: map
@@ -178,6 +182,20 @@ mapping:
                 required: True
                 range: { min: 1 }
 
+    'salmon_index':
+      type: map
+      mapping: 
+        "options":
+          type: str
+        "threads":
+          type: int
+          required: True
+          range: { min: 1 }
+        "resources":
+          type: any
+          required: true
+      
+
     'salmon_mapping':
         type: map
         mapping:
@@ -187,12 +205,17 @@ mapping:
                 type: int
                 required: True
                 range: { min: 1 }
+            "resources":
+                type: any
+                required: true
 
-    'coverage':
+    'bam_coverage':
         type: map
         mapping:
             "do":
                 type: bool
+            "options":
+                type: str
             "binSize":
                 type: int
             "genomeSize":
@@ -207,6 +230,9 @@ mapping:
                 type: int
                 required: True
                 range: { min: 1, max: 8 }
+            "resources":
+                type: any
+                required: true
 
     'mark_duplicates':
         type: map
@@ -221,6 +247,9 @@ mapping:
                 type: int
                 required: True
                 range: { min: 1, max: 8 }
+            "resources":
+                type: any
+                required: true
 
     'bowtie1_mapping_rna':
         type: map
@@ -260,7 +289,7 @@ mapping:
             "bed_file":
                 type: str
 
-    'bowtie2':
+    'bowtie2_mapping':
         type: map
         mapping:
             "options":
@@ -271,6 +300,9 @@ mapping:
                 range: { min: 1}
             "genome_size_larger_than_4gb":
                 type: bool
+            "resources":
+                type: any
+                required: true
 
     'bowtie2_index':
         type: map
@@ -281,6 +313,9 @@ mapping:
                 type: int
                 required: True
                 range: { min: 1}
+            "resources":
+                type: any
+                required: true
 
     'star_mapping':
         type: map
@@ -291,4 +326,23 @@ mapping:
                 type: int
                 required: True
                 range: { min: 1}
+            "resources":
+                type: any
+                required: true
+            "legacy":
+                type: bool
+                required: True
+
+    'star_index':
+        type: map
+        mapping:
+            "options":
+                type: str
+            "threads":
+                type: int
+                required: True
+                range: { min: 1}
+            "resources":
+                type: any
+                required: true
 

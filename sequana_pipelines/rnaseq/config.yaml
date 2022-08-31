@@ -10,6 +10,13 @@
 input_directory:
 input_readtag: _R[12]_
 input_pattern: '*fastq.gz'
+
+# See sequana_pipetools.readthedocs.io for details about these 2 options
+# common prefixes are removed. addition prefixes may be removed here
+#extra_prefixes_to_strip = []
+# in special cases, sample names can be extracted with a pattern
+#sample_pattern: '{sample}.fastq.gz'
+
 # =========================================== Sections for the users
 
 #############################################################################
@@ -50,6 +57,8 @@ fastqc:
     skip_fastqc_raw: true
     options: --nogroup
     threads: 4
+    resources:
+        mem: 4G
 
 #######################################################################
 # Quality trimming and adapter removal
@@ -78,7 +87,7 @@ fastqc:
 #            of -O to 6 (at least 6 bases are required to match before
 #            trimming of an adapter)
 #
-# tool_choice__ = ["atropos", "cutadapt", "fastp"]
+# tool_choice__ = ["atropos", "cutadapt"]
 #
 # trim-n trims Ns at the end of the read
 cutadapt:
@@ -157,11 +166,27 @@ bowtie1_mapping_rna:
 # - do: if unchecked, this rule is ignored
 # - options: any options recognised by rna-star tool
 # - threads: number of threads to be used
-#
+# - legacy: if set to True will use the old 2-pass version from STAR
+#      used in this pipeline until v0.15.3. If you want to use the
+#      2-pass mode available in star, you will need star 2.7 and above
 star_mapping:
     options: --outFilterMismatchNoverLmax 0.05 --seedSearchStartLmax 20
+    legacy: True
     threads: 4
+    resources:
+      mem: 34G
 
+##############################################################################
+# STAR indexing section
+#
+# :Parameters:
+#
+# - options: string with any valid STAR options
+star_index:
+    options:
+    threads: 4
+    resources:
+      mem: 4G
 #############################################################################
 # bowtie1_mapping_ref used to align reads against genome file
 #
@@ -184,20 +209,31 @@ bowtie1_mapping_ref:
 # - options: any options recognised by bowtie2 tool
 # - threads: number of threads to be used
 #
-bowtie2:
+bowtie2_mapping:
     #options: "--dovetail --no-mixed --no-discordant " for paired-end data
     options: ''
     threads: 4
     genome_size_larger_than_4gb: false
+    resources:
+      mem: 20G
 
 bowtie2_index:
     options: ''
     threads: 4
+    resources:
+      mem: 20G
 
+salmon_index:
+    threads: 2
+    options:
+    resources:
+        mem: 4G
 
 salmon_mapping:
     options: -l A
     threads: 4
+    resources:
+        mem: 4G
 
 #############################################################################
 # feature_counts used to count reads against features
@@ -233,7 +269,7 @@ feature_counts:
     tolerance: 0.15  # use to figure out the strandness. no need to change
     feature: gene    # could be exon, mRNA, etc
     attribute: ID    # could be ID, gene_id, etc
-    extra_attributes: '' # by default, stores only the main attribute, but could add more
+    extra_attributes:    # by default, stores only the main attribute, but could add more
 
 #############################################################################
 # bamCoverage write file in bigwig format from BAM files.
@@ -269,14 +305,17 @@ feature_counts:
 #                      inclusion. A value of 0 disables filtering and is
 #                      needed for including single-end and orphan reads.
 # - threads: number of threads to be used
-coverage:
+bam_coverage:
     do: false
+    options:
     binSize: 10
     genomeSize: 2150570000  ##mm10
     extendReads: 65
     minFragmentLength: 0 #Note that a value other than 0 will exclude all single-end reads.
     maxFragmentLength: 0 #A value of 0 disables filtering and is needed for including single-end and orphan reads.
     threads: 4
+    resources:
+        mem: 20G
 
 
 ###########################################################################
@@ -308,9 +347,11 @@ mark_duplicates:
     remove: false ## may be True
     tmpdir: ./tmp/
     threads: 4
+    resources:
+      mem: 34G
 
 add_read_group:
-    options:
+    options: 
 
 #############################################################################
 # RNA-SeQC allows to compute a series of quality control metrics for RNA-seq data
@@ -324,7 +365,7 @@ add_read_group:
 # - options: any options recognised by RNA-seQC tool
 rnaseqc:
     do: false
-    gtf_file: ''
+    gtf_file:
     options: --coverage
 
 
@@ -332,7 +373,7 @@ rnaseqc:
 # needs mark_duplicates
 rseqc:
     do: false
-    bed_file: ''
+    bed_file:
 
 
 #############################################################################
@@ -346,10 +387,10 @@ rseqc:
 # - config_file: by default, we use sequana RNA-seq multiqc_config file. 
 #       If you want your own multiqc, fill this entry
 multiqc:
-    options: "-p -f -x *_init_*"
-    modules: 
-    input_directory: "."
-    config_file: "multiqc_config.yaml" 
+    options: -p -f -x *_init_*
+    modules: ''
+    input_directory: .
+    config_file: multiqc_config.yaml
 
 
 

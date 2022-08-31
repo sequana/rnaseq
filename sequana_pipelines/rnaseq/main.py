@@ -248,7 +248,7 @@ def main(args=None):
 
         # ------------------------------------------------------ optional
         cfg.igvtools.do = options.do_igvtools
-        cfg.coverage.do = options.do_bam_coverage
+        cfg.bam_coverage.do = options.do_bam_coverage
         cfg.mark_duplicates.do = False
         if options.do_mark_duplicates:
             cfg.mark_duplicates.do = True
