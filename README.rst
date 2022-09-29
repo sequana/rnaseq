@@ -150,6 +150,10 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.16.1    * fix bug in feature counts automatic strand balance detection. Was 
+            always using the stranded case (2).
+          * add singularity workflow for testing
+          * fix documentation in config.yaml
 0.16.0    * star, salmon, bam_coverage are now in sequana wrappers, updated 
             the pipeline accordingly
           * updated config file and schema to include resources inside the 

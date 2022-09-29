@@ -793,8 +793,9 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
 
             if choice in {0, 1, 2}:
                 for filename in input:
-                    shell(f"cp {filename} {fc_outdir}")
-                    shell(f"cp {filename}.summary {fc_outdir}")
+                    if f"feature_counts/{choice}/" in filename:
+                        shell(f"cp {filename} {fc_outdir}")
+                        shell(f"cp {filename}.summary {fc_outdir}")
             else:
                 # if not clear, we copy everything and users should clean up the directory
                 for filename in input.fc0:
