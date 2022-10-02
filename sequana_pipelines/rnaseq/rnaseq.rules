@@ -628,7 +628,7 @@ if config["mark_duplicates"]["do"]:
             remove_dup = "false",
             tmpdir = "{sample}/mark_duplicates/tmp"
         container:
-            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.3.img"
         resources:
             **config['mark_duplicates']['resources']
         wrapper:
