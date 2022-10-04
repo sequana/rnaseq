@@ -115,16 +115,12 @@ cutadapt:
 # Adapter trimming is set by default. Can be disable with -A
 # For adapters, this is automatic but you can be specific using 
 # --adapter_sequence for read1, and --adapter_sequence_r2 for read2.
-#
-# --cut_tail  move a sliding window from tail (3') to front, drop the bases 
+# The --cut_tail moves a sliding window from tail (3') to front, drop the bases 
 # in the window if its mean quality is below cut_mean_quality, stop otherwise. 
-#  Use cut_tail_window_size to set the widnow size (default 4)), and 
-#  cut_tail_mean_quality to set the mean quality threshold (default 20)
-
-# useful options
-# --disable_adapter_trimming
-# --disable_quality_filtering.
-# -n 5 (minimum number of Ns required to discard a read)
+# Use cut_tail_window_size to set the widnow size (default 4)), and 
+# cut_tail_mean_quality to set the mean quality threshold (default 20)
+# Other useful options: --disable_adapter_trimming and --disable_quality_filtering.
+# or -n 5 (minimum number of Ns required to discard a read)
 fastp:
     options: --cut_tail
     minimum_length: 20
@@ -136,7 +132,10 @@ fastp:
     disable_quality_filtering: false
 
 #######################################################
-# sofware__choice = ["atropos", "cutadapt", "fastp"]
+# Quality trimming software choice
+#
+# software_choice__ = ["atropos", "cutadapt", "fastp"]
+#
 trimming:
     software_choice: fastp
     do: true
@@ -254,12 +253,11 @@ salmon_mapping:
 #     reliable. A warning will be raised. Note also that if there is no
 #     consensus across samples, a warning/error may also be raised. tolerance
 #     is therefore in the range [0-0.25]
-# in the options, one can use the -t option to specify the feature type in GTF
-# annotation. For example gene, exon (default). The -g option specify the 
-# attribute type in GTF annoation. (gene_id) by default. Finally, 
-# the -s option perform strand specific read counting. 0 unstranded, 1
-# stranded, 
-# 2 reversely stranded.
+# - feature: this is equivalent to the -t option to specify the feature type in GTF
+#     annotation. For example gene, exon (default). 
+# - attribute: this is the -g option to specify the attribute type in GTF annoation. 
+#   (gene_id) by default. 
+# - extra_attributes: any other 
 #
 feature_counts:
     do: true

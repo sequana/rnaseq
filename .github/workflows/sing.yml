@@ -1,0 +1,58 @@
+name: Singularity Run
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches-ignore: []
+  schedule:
+    - cron: '0 0 * * SUN'
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 5
+      matrix:
+        python: [3.7, 3.8, 3.9]
+      fail-fast: false
+
+
+    steps:
+
+    - name: install graphviz
+      run: |
+        sudo apt-get install -y graphviz
+
+    - name: checkout git repo
+      uses: actions/checkout@v2
+
+    - name: Set up Python 3.X
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python }}
+
+    - name: Add conda to system path
+      run: |
+        # $CONDA is an environment variable pointing to the root of the miniconda directory
+        echo $CONDA/bin >> $GITHUB_PATH
+
+    - name: conda
+      run: |
+        conda install -c conda-forge  -c bioconda --quiet -y python=${{ matrix.python }} 'singularity>3' fastp
+
+    - name: Install dependencies
+      run: |
+        pip install .[testing]
+
+    - name: install package itself
+      run: |
+         pip install .
+
+    - name: testing
+      run: |
+        sequana_rnaseq --aligner bowtie2 --input-directory test/data/ --use-singularity  --genome-directory test/data/Saccer3 && cd rnaseq && sh rnaseq.sh
+
+

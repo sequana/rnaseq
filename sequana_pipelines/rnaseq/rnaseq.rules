@@ -628,7 +628,8 @@ if config["mark_duplicates"]["do"]:
             remove_dup = "false",
             tmpdir = "{sample}/mark_duplicates/tmp"
         container:
-            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
+
         resources:
             **config['mark_duplicates']['resources']
         wrapper:
@@ -793,8 +794,9 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
 
             if choice in {0, 1, 2}:
                 for filename in input:
-                    shell(f"cp {filename} {fc_outdir}")
-                    shell(f"cp {filename}.summary {fc_outdir}")
+                    if f"feature_counts/{choice}/" in filename:
+                        shell(f"cp {filename} {fc_outdir}")
+                        shell(f"cp {filename}.summary {fc_outdir}")
             else:
                 # if not clear, we copy everything and users should clean up the directory
                 for filename in input.fc0:
