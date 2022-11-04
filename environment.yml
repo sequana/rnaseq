@@ -1,7 +1,7 @@
 cutadapt
 picard
 bowtie
-bowtie2
+bowtie2>=2.4.2
 STAR
 subread
 bamtools
