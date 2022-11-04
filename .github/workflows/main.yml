@@ -41,7 +41,7 @@ jobs:
 
     - name: conda
       run: |
-          conda install -c conda-forge -c bioconda --quiet -y python=${{ matrix.python }} bowtie 'samtools>1.7' bamools bedtools 'bowtie2>=2.3' fastqc subread fastp deeptools salmon star 'picard>2.20' gffread  
+          conda install -c conda-forge -c bioconda --quiet -y python=${{ matrix.python }} bowtie 'samtools>1.7' bamtools bedtools 'bowtie2>=2.3' fastqc subread fastp deeptools salmon star 'picard>2.20' gffread  
           conda install -c conda-forge -y ncurses
     - name: Install dependencies
       run: |
