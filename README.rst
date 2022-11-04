@@ -70,11 +70,15 @@ This pipelines requires lots of third-party executable(s). Here is a list that
 may change. A Message will inform you would you be missing an executable:
 
 - bowtie
-- bowtie2
+- bowtie2>=2.4.2
 - STAR
 - featureCounts (subread package)
 - picard
 - multiqc
+- samtools
+
+Note that bowtie>=2.4.2 is set to ensure the pipeline can be used with python 3.7-3.8-3.9 and the sequana-wrappers
+that supports bowtie2 with option --threads only (not previous versions). See environment.yaml or conda.yaml for latest list of required third-party tools.
 
 You can install most of the tools using `damona <https://damona.readthedocs.io>`_::
 

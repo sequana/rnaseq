@@ -1,14 +1,22 @@
-cutadapt
-picard
-bowtie
-bowtie2>=2.4.2
-STAR
-subread
-bamtools
-samtools
-deeptools
-gffread
-salmon
-fastp
-fastqc
-bedtools
+name: sequana_fastqc
+
+channels:
+- conda-forge
+- bioconda
+- defaults
+- r
+
+dependencies:
+- bowtie
+- samtools>1.7
+- bamtools
+- bedtools
+- bowtie2>=2.3
+- fastqc
+- subread
+- fastp
+- deeptools
+- salmon
+- star
+- picard>2.20
+- gffread
