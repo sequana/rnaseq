@@ -154,6 +154,12 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.17.0    * fastp step changed to use sequana-wrappers. Slight change in 
+            config file. The reverse and forward adapter options called
+            rev and fwd have been dropped in favor of a single adapters option.
+            v0.17.0 config and schema are not compatible with previous 
+            versions.
+          * Update singularity containers and add new one for fastp
 0.16.1    * fix bug in feature counts automatic strand balance detection. Was 
             always using the stranded case (2).
           * add singularity workflow for testing

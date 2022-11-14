@@ -122,10 +122,9 @@ cutadapt:
 # Other useful options: --disable_adapter_trimming and --disable_quality_filtering.
 # or -n 5 (minimum number of Ns required to discard a read)
 fastp:
-    options: --cut_tail
+    options: ' --cut_tail '
     minimum_length: 20
-    rev: ''
-    fwd: ''
+    adapters: ''
     quality: 15
     threads: 4
     disable_adapter_trimming: false

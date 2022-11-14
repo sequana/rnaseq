@@ -72,14 +72,10 @@ mapping:
       mapping:
         "options":
             type: str
-
         "minimum_length":
             required: True
             type: int
-        "fwd":
-            type: str
-            required: False
-        "rev":
+        "adapters":
             type: str
             required: False
         "quality":
