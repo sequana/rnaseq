@@ -1,4 +1,4 @@
-name: Singularity Run
+name: Apptainer Run
 
 on:
   push:

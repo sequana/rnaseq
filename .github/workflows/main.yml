@@ -39,7 +39,6 @@ jobs:
     - name: install package itself
       shell: bash -l {0}
       run: |
-        which pip
         pip install .
 
     - name: Install dependencies
