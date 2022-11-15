@@ -12,35 +12,25 @@
 
 
 
-This is is the **rnaseq** pipeline from the `Sequana <https://sequana.readthedocs.org>`_ project
+This is is the **RNA-seq** pipeline from the `Sequana <https://sequana.readthedocs.org>`_ project
 
 :Overview: RNASeq analysis from raw data to feature counts
 :Input: A set of Fastq Files and genome reference and annotation.
-:Output: MultiQC reports and feature Counts
-:Status: Production
+:Output: MultiQC and HTML reports, BAM and bigwig files, feature Counts, script to launch differential analysis
+:Status: Production. 
 :Citation(sequana): Cokelaer et al, (2017), ‘Sequana’: a Set of Snakemake NGS pipelines, Journal of Open Source Software, 2(16), 352, JOSS DOI doi:10.21105/joss.00352
-:Citation(pipeline): 
+:Citation(pipeline):
     .. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.4047837.svg
        :target: https://doi.org/10.5281/zenodo.4047837
 
 Installation
 ~~~~~~~~~~~~
 
-You must install Sequana first::
-
-    pip install sequana
-
-Then, just install this package::
+**sequana_rnaseq** is based on Python3, just install the package as follows:
 
     pip install sequana_fastqc --upgrade
 
-For all dependencies (see hereafter), you can use conda. Another experimental solution is to use damona::
-
-    pip install damona 
-    damona install sequana_tools
-
-This will install all required dependencies.
-
+You will need third-party software such as bowtie2/star. Please see below for details.
 
 Usage
 ~~~~~
@@ -96,6 +86,12 @@ all dependencies for you::
     pip install sequana
     pip install sequana_rnaseq
     conda install --file https://raw.githubusercontent.com/sequana/rnaseq/main/conda.yaml
+
+For Linux users, we provide singularity images available through within the damona project (https://damona.readthedocs.io).
+
+To use apptainer, initialise the pipeline with the --use-singularity option and everything should be downloaded automatically for you, which also guarantees reproducibility:
+
+    sequana_rnaseq --input-directory data --use-singularity --genome-directory ....
 
 
 .. image:: https://raw.githubusercontent.com/sequana/sequana_rnaseq/main/sequana_pipelines/rnaseq/dag.png
