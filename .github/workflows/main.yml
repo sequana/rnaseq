@@ -16,7 +16,7 @@ jobs:
     strategy:
       max-parallel: 5
       matrix:
-        python: [3.7,3.8,3.9]
+        python: [3.7, 3.8, 3.9]
       fail-fast: false
 
 
@@ -29,33 +29,31 @@ jobs:
     - name: checkout git repo
       uses: actions/checkout@v2
 
-    - name: Set up Python 3.X
-      uses: actions/setup-python@v2
+    - name: conda/mamba
+      uses: mamba-org/provision-with-micromamba@main
       with:
-        python-version: ${{ matrix.python }}
+          environment-file: environment.yml
+          extra-specs: |
+            python=${{ matrix.python }}
 
-    - name: Add conda to system path
+    - name: install package itself
+      shell: bash -l {0}
       run: |
-        # $CONDA is an environment variable pointing to the root of the miniconda directory
-        echo $CONDA/bin >> $GITHUB_PATH
+        pip install .
 
-    - name: conda
-      run: |
-          conda install -c conda-forge -c bioconda --quiet -y python=${{ matrix.python }} bowtie 'samtools>1.7' bamtools bedtools 'bowtie2>=2.3' fastqc subread fastp deeptools salmon star 'picard>2.20' gffread  
-          conda install -c conda-forge -y ncurses
+
     - name: Install dependencies
+      shell: bash -l {0}
       run: |
         pip install coveralls pytest-cov pytest pytest-xdist
 
-    - name: install package itself
-      run: |
-         pip install .
-
     - name: testing
+      shell: bash -l {0}
       run: |
         pytest -v --cov-report term-missing --cov=sequana_pipelines.rnaseq
 
     - name: coveralls
+      shell: bash -l {0}
       run: |
         echo $COVERALLS_REPO_TOKEN
         coveralls --service=github

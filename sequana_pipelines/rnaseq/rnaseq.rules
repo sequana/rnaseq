@@ -107,7 +107,7 @@ if manager.config.general.contaminant_file:
         output:
             __bowtie1_index_rna__fasta + ".fai"
         container:
-            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
         shell:
             """
             samtools faidx {input[0]}
@@ -134,7 +134,7 @@ elif manager.config.general.rRNA_feature:
         log:
             "logs/indexing/get_rRNA.log"
         container:
-            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
         shell:
             """
             # used to be gawk but awk is more generic.
@@ -167,7 +167,7 @@ if manager.config.general.contaminant_file or manager.config.general.rRNA_featur
             options=""
         threads: 2
         container:
-            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
         wrapper:
             f"{sequana_wrapper_branch}/wrappers/bowtie1/build"
 
@@ -218,7 +218,7 @@ if manager.config.general.aligner == "bowtie2":
             threads:
                 config["bowtie2_index"]["threads"]
             container:
-                "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+                "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
             resources:
                 **config['bowtie2_index']['resources']
             wrapper:
@@ -256,7 +256,7 @@ elif manager.config.general.aligner  == "star":
             log:
                 "logs/indexing/star_genome.log"
             container:
-                "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+                "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
             resources:
                 **config['star_index']['resources']
             wrapper:
@@ -356,15 +356,40 @@ elif manager.config.trimming.software_choice in ["cutadapt", "atropos"]:
         __clean_fastq__output = __cutadapt__output
         include: sm.modules["cutadapt"]
 elif manager.config.trimming.software_choice == "fastp":
-    __fastp__input_fastq = manager.getrawdata()
-    __fastp__output = ["{sample}/fastp/{sample}_R1_.fastp.fastq.gz"]
+
+    __clean_fastq__output = ["{sample}/fastp/{sample}_R1_.fastp.fastq.gz"]
     if manager.paired:
-        __fastp__output += ["{sample}/fastp/{sample}_R2_.fastp.fastq.gz"]
-    __fastp__output_json = "{sample}/fastp/fastp.json"   # must be named fastp.json
-    __fastp__output_html = "{sample}/fastp/fastp.html"
-    __fastp__log = "{sample}/fastp/{sample}.log"
-    include: sm.modules['fastp']
-    __clean_fastq__output = __fastp__output
+        __clean_fastq__output += ["{sample}/fastp/{sample}_R2_.fastp.fastq.gz"]
+
+    _quality = config["fastp"].get("quality", 15)
+    _minlen = config["fastp"].get("minimum_length", 20)
+
+    options_fastp = config["fastp"].get("options", "")
+    options_fastp += f" --qualified_quality_phred {_quality}"
+    options_fastp += f" -l {_minlen}"
+    if config["fastp"].get("disable_adapter_trimming", False) is True:
+        options_fastp += "--disable_adapter_trimming"
+    if config["fastp"].get("disable_quality_filtering", False) is True:
+        options_fastp += "--disable_quality_filtering"
+
+    rule fastp:
+        input: 
+            sample=manager.getrawdata()
+        output:
+            trimmed=__clean_fastq__output,
+            html="{sample}/fastp/fastp.html",
+            json="{sample}/fastp/fastp.json", # must be named fastp
+        log:
+            "logs/fastp/{sample}.log"
+        params:
+            options=config['fastp']["options"],
+            adapters=config["fastp"]["adapters"]
+        threads:
+            config["fastp"].get("threads", 4)
+        container:
+           "https://zenodo.org/record/7319782/files/fastp_0.23.2.img"
+        wrapper:
+            f"{sequana_wrapper_branch}/wrappers/fastp"
 
 
 # ===================================================== FASTQC fastp results
@@ -457,7 +482,7 @@ if manager.config.general.rRNA_feature or manager.config.general.contaminant_fil
         threads: 
             config['bowtie1_mapping_rna']['threads']
         container:
-            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
         wrapper:
             f"{sequana_wrapper_branch}/wrappers/bowtie1/align"
 
@@ -513,7 +538,7 @@ if manager.config.general.aligner == "bowtie2":
         threads:
             config["bowtie2_mapping"]["threads"]
         container:
-            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
         resources:
              **config['bowtie2_mapping']['resources']
         wrapper:
@@ -541,7 +566,7 @@ elif manager.config.general.aligner == "star":
         log:
             "{sample}/star_mapping/{sample}.log"
         container:
-            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
         resources:
             **config['star_mapping']['resources']
         wrapper:
@@ -603,7 +628,7 @@ if manager.config.general.aligner not in ['salmon']:
             options=config["add_read_group"]["options"],
             SM="{sample}"
         container:
-            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
         wrapper:
             f"{sequana_wrapper_branch}/wrappers/add_read_group"
 
@@ -629,7 +654,6 @@ if config["mark_duplicates"]["do"]:
             tmpdir = "{sample}/mark_duplicates/tmp"
         container:
             "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
-
         resources:
             **config['mark_duplicates']['resources']
         wrapper:
@@ -655,7 +679,7 @@ if manager.config.bam_coverage.do is True and config['general']['aligner'] not i
         threads:
             config['bam_coverage']['threads']
         container:
-            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
         resources:
             **config['bam_coverage']['resources']
         wrapper:
@@ -743,7 +767,7 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
         threads:
             config["feature_counts"]['threads']
         container:
-            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
         log:
             "{sample}/feature_counts/{strand}/feature_counts.log"
         wrapper:
@@ -866,7 +890,7 @@ if config['rseqc']['do']:
         log:
             "{sample}/rseqc/{sample}.log"
         container:
-            "https://zenodo.org/record/6794508/files/sequana_tools_0.14.1.img"
+            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
         shell:
             """
             # for paired data only

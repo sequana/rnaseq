@@ -228,8 +228,12 @@ def main(args=None):
         else:
             cfg.fastp.minimum_length = options.trimming_minimum_length
             cfg.fastp.quality = 15 if qual == -1 else qual
-            cfg.fastp.fwd = options.trimming_adapter_read1
-            cfg.fastp.rev = options.trimming_adapter_read2
+            cfg.fastp.adapters = ""
+            if options.trimming_adapter_read1:
+                cfg.fastp.adapters += f"--adapter_sequence {options.trimming_adapter_read1}"
+            if options.trimming_adapter_read2:
+                cfg.fastp.adapters += f"--adapter_sequence_r2 {options.trimming_adapter_read2}"
+
             cfg.fastp.options = " --cut_tail "
             cfg.fastp.disable_quality_filtering = False
             cfg.fastp.disable_adapter_trimming = False
