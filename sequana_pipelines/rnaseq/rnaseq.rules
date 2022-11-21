@@ -107,7 +107,7 @@ if manager.config.general.contaminant_file:
         output:
             __bowtie1_index_rna__fasta + ".fai"
         container:
-            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
+            config['apptainers']['sequana_tools']
         shell:
             """
             samtools faidx {input[0]}
@@ -134,7 +134,7 @@ elif manager.config.general.rRNA_feature:
         log:
             "logs/indexing/get_rRNA.log"
         container:
-            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
+            config['apptainers']['sequana_tools']
         shell:
             """
             # used to be gawk but awk is more generic.
@@ -167,7 +167,7 @@ if manager.config.general.contaminant_file or manager.config.general.rRNA_featur
             options=""
         threads: 2
         container:
-            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
+            config['apptainers']['sequana_tools']
         wrapper:
             f"{sequana_wrapper_branch}/wrappers/bowtie1/build"
 
@@ -218,7 +218,7 @@ if manager.config.general.aligner == "bowtie2":
             threads:
                 config["bowtie2_index"]["threads"]
             container:
-                "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
+                config['apptainers']['sequana_tools']
             resources:
                 **config['bowtie2_index']['resources']
             wrapper:
@@ -256,7 +256,7 @@ elif manager.config.general.aligner  == "star":
             log:
                 "logs/indexing/star_genome.log"
             container:
-                "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
+                config['apptainers']['sequana_tools']
             resources:
                 **config['star_index']['resources']
             wrapper:
@@ -293,7 +293,7 @@ elif manager.config.general.aligner == "salmon":
             params:
                 options=config['salmon_index']['options']
             container:
-                "https://zenodo.org/record/5708843/files/salmon_1.3.0.img"
+                config['apptainers']['salmon']
             log:
                 "logs/salmon_indexing.log"
             wrapper:
@@ -314,7 +314,7 @@ if not manager.config['fastqc']['skip_fastqc_raw']:
             working_directory= "{sample}/fastqc_raw/"
         threads: config["fastqc"]["threads"]
         container:
-            "https://zenodo.org/record/7015004/files/fastqc_0.11.9-py3.img"
+            config['apptainers']['fastqc']
         log:
             "{sample}/fastqc_raw/fastqc.log"
         wrapper:
@@ -387,7 +387,7 @@ elif manager.config.trimming.software_choice == "fastp":
         threads:
             config["fastp"].get("threads", 4)
         container:
-           "https://zenodo.org/record/7319782/files/fastp_0.23.2.img"
+            config['apptainers']['fastp']
         wrapper:
             f"{sequana_wrapper_branch}/wrappers/fastp"
 
@@ -408,7 +408,7 @@ rule fastqc_clean:
     resources:
         **config["fastqc"]['resources']
     container:
-        "https://zenodo.org/record/7015004/files/fastqc_0.11.9-py3.img"
+        config['apptainers']['fastqc']
     wrapper:
         f"{sequana_wrapper_branch}/wrappers/fastqc"
 expected_output.extend(expand("{sample}/fastqc_clean/fastqc.done", sample=manager.samples))
@@ -482,7 +482,7 @@ if manager.config.general.rRNA_feature or manager.config.general.contaminant_fil
         threads: 
             config['bowtie1_mapping_rna']['threads']
         container:
-            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
+            config['apptainers']['sequana_tools']
         wrapper:
             f"{sequana_wrapper_branch}/wrappers/bowtie1/align"
 
@@ -538,7 +538,7 @@ if manager.config.general.aligner == "bowtie2":
         threads:
             config["bowtie2_mapping"]["threads"]
         container:
-            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
+            config['apptainers']['sequana_tools']
         resources:
              **config['bowtie2_mapping']['resources']
         wrapper:
@@ -566,7 +566,7 @@ elif manager.config.general.aligner == "star":
         log:
             "{sample}/star_mapping/{sample}.log"
         container:
-            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
+            config['apptainers']['sequana_tools']
         resources:
             **config['star_mapping']['resources']
         wrapper:
@@ -601,7 +601,7 @@ elif manager.config.general.aligner == "salmon":
         resources:
             **config["salmon_mapping"]['resources']
         container:
-            "https://zenodo.org/record/5708843/files/salmon_1.3.0.img"
+            config['apptainers']['salmon']
         log:
             "{sample}/salmon_mapping/salmon.log"
         wrapper:
@@ -628,7 +628,7 @@ if manager.config.general.aligner not in ['salmon']:
             options=config["add_read_group"]["options"],
             SM="{sample}"
         container:
-            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
+            config['apptainers']['sequana_tools']
         wrapper:
             f"{sequana_wrapper_branch}/wrappers/add_read_group"
 
@@ -653,7 +653,7 @@ if config["mark_duplicates"]["do"]:
             remove_dup = "false",
             tmpdir = "{sample}/mark_duplicates/tmp"
         container:
-            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
+            config['apptainers']['sequana_tools']
         resources:
             **config['mark_duplicates']['resources']
         wrapper:
@@ -679,7 +679,7 @@ if manager.config.bam_coverage.do is True and config['general']['aligner'] not i
         threads:
             config['bam_coverage']['threads']
         container:
-            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
+            config['apptainers']['sequana_tools']
         resources:
             **config['bam_coverage']['resources']
         wrapper:
@@ -710,7 +710,7 @@ if manager.config.igvtools.do and config['general']['aligner'] not in ['salmon']
         params:
             chromSize=config['igvtools']['chrom_sizes_file']
         container:
-            "https://zenodo.org/record/7022635/files/igvtools_2.12.0.img"
+            config['apptainers']['igvtools']
         threads: 4
         shell:
             """
@@ -767,7 +767,7 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
         threads:
             config["feature_counts"]['threads']
         container:
-            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
+            config['apptainers']['sequana_tools']
         log:
             "{sample}/feature_counts/{strand}/feature_counts.log"
         wrapper:
@@ -890,7 +890,7 @@ if config['rseqc']['do']:
         log:
             "{sample}/rseqc/{sample}.log"
         container:
-            "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
+            config['apptainers']['sequana_tools']
         shell:
             """
             # for paired data only

@@ -12,6 +12,9 @@ mapping:
     "input_pattern":
         type: str
         required: True
+    "apptainers":
+        type: any
+
 
     "fastqc":
         type: map

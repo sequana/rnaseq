@@ -16,6 +16,12 @@ input_pattern: '*fastq.gz'
 #extra_prefixes_to_strip = []
 # in special cases, sample names can be extracted with a pattern
 #sample_pattern: '{sample}.fastq.gz'
+apptainers:
+  sequana_tools: "https://zenodo.org/record/7102074/files/sequana_tools_0.14.3.img"
+  salmon: "https://zenodo.org/record/5708843/files/salmon_1.3.0.img"
+  fastqc: "https://zenodo.org/record/7015004/files/fastqc_0.11.9-py3.img"
+  fastp: "https://zenodo.org/record/7319782/files/fastp_0.23.2.img"
+  igvtools: "https://zenodo.org/record/7022635/files/igvtools_2.12.0.img"
 
 # =========================================== Sections for the users
 
