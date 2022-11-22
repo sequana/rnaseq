@@ -57,6 +57,6 @@ jobs:
 
     - name: testing
       run: |
-        sequana_rnaseq --aligner bowtie2 --input-directory test/data/ --use-singularity  --genome-directory test/data/Saccer3 && cd rnaseq && sh rnaseq.sh
+        sequana_rnaseq --aligner bowtie2 --input-directory test/data/ --use-apptainer  --genome-directory test/data/Saccer3 && cd rnaseq && sh rnaseq.sh
 
 
