@@ -20,6 +20,7 @@ import shutil
 import subprocess
 
 from sequana_pipetools.options import *
+from sequana_pipetools.options import before_pipeline
 from sequana_pipetools.misc import Colors
 from sequana_pipetools.info import sequana_epilog, sequana_prolog
 from sequana_pipetools import SequanaManager
@@ -164,8 +165,6 @@ def main(args=None):
         args = sys.argv
 
     # whatever needs to be called by all pipeline before the options parsing
-    from sequana_pipetools.options import before_pipeline
-
     before_pipeline(NAME)
 
     # option parsing including common epilog
