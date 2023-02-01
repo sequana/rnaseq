@@ -16,7 +16,7 @@ jobs:
     strategy:
       max-parallel: 5
       matrix:
-        python: [3.7, 3.8, 3.9]
+        python: [3.8, 3.9, '3.10']
       fail-fast: false
 
 
@@ -28,24 +28,19 @@ jobs:
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
     - name: install graphviz
       run: |
-        sudo apt-get install -y graphviz
+        sudo apt update
+        sudo apt-get install -y graphviz software-properties-common
+        sudo add-apt-repository -y ppa:apptainer/ppa
+        sudo apt update
+        sudo apt install -y apptainer
 
     - name: checkout git repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Set up Python 3.X
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python }}
-
-    - name: Add conda to system path
-      run: |
-        # $CONDA is an environment variable pointing to the root of the miniconda directory
-        echo $CONDA/bin >> $GITHUB_PATH
-
-    - name: conda
-      run: |
-        conda install -c conda-forge  -c bioconda --quiet -y python=${{ matrix.python }} 'singularity>3' 
 
     - name: Install dependencies
       run: |
