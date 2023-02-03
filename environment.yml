@@ -1,4 +1,4 @@
-name: sequana_fastqc
+name: sequana_rnaseq
 
 channels:
 - conda-forge

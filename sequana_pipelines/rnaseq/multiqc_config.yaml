@@ -28,7 +28,7 @@ intro_text: "Report summarising cleaning (cutadapt section) and mapping (stat/bo
 report_header_info:
    - Authors: '<a href="http://github.com/sequana/sequana">Sequana developers</a>'
    - Want to know more?: 'See the <a href="http://sequana.readthedocs.io" target="_blank">Sequana</a> and <a href="http://github.com/sequana/sequana_rnaseq/" target="_blank"> sequana_rnaseq pipeline</a> documentation.'
-   - Citations: 'If you used Sequanix, Sequana, Sequana_coverage tool, or any Sequana pipelines, please see <a href="http:/    /sequana.readthedocs.io">How to cite ?</a> section. In particular, if you use this report in a publication, please cite Sequana.'
+   - Citations: 'If you used Sequanix, Sequana, Sequana_coverage tool, or any Sequana pipelines, please see <a href="http://sequana.readthedocs.io">How to cite ?</a> section. In particular, if you use this report in a publication, please cite Sequana.'
    - Contact E-mail: ''
 #   - Project Type: 'Differential gene expression'
 
