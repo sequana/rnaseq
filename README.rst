@@ -28,7 +28,7 @@ Installation
 
 **sequana_rnaseq** is based on Python3, just install the package as follows:
 
-    pip install sequana_fastqc --upgrade
+    pip install sequana_rnaseq --upgrade
 
 You will need third-party software such as bowtie2/star. Please see below for details.
 
