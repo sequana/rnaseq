@@ -150,6 +150,7 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.17.1    * use new rulegraph / graphviz apptainer
 0.17.0    * fastp step changed to use sequana-wrappers. Slight change in 
             config file. The reverse and forward adapter options called
             rev and fwd have been dropped in favor of a single adapters option.
