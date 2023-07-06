@@ -559,6 +559,10 @@ elif manager.config.general.aligner == "star":
         output:
             bam = "{sample}/star_mapping/{sample}_Aligned.sortedByCoord.out.bam"
         params:
+            options=config['star_mapping']['options'],
+            # for legacy mapping, set the first and second pass options
+            options_first_pass=config['star_mapping']['options'],
+            options_second_pass=config['star_mapping']['options'],
             prefix = "{sample}/star_mapping/{sample}",
             legacy=True,
         threads:
