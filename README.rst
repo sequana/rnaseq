@@ -144,12 +144,23 @@ to be used with the pipeline. Each rule used in the pipeline may have a section 
 .. warning:: the RNAseQC rule is switch off and is not currently functional in
    version 0.9.X
 
+Issues
+~~~~~~
+
+In the context of eukaryotes, you will need 32G of memory most probably. If this is too much,
+you can try to restrict the memory. Check out the config.yaml file in the star section.
+
+
+
 Changelog
 ~~~~~~~~~
 
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.17.2    * CHANGES: in star section, added --limitBAMsortRAM and set to 30G
+          * BUG: Fix missing params (options) in star_mapping rule not taken
+            into account
 0.17.1    * use new rulegraph / graphviz apptainer
 0.17.0    * fastp step changed to use sequana-wrappers. Slight change in 
             config file. The reverse and forward adapter options called

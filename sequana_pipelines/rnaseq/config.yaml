@@ -169,17 +169,18 @@ bowtie1_mapping_rna:
 # :Parameters:
 #
 # - do: if unchecked, this rule is ignored
-# - options: any options recognised by rna-star tool
+# - options: any options recognised by rna-star tool. Set limitBAMsortRAM to 30G
 # - threads: number of threads to be used
 # - legacy: if set to True will use the old 2-pass version from STAR
 #      used in this pipeline until v0.15.3. If you want to use the
 #      2-pass mode available in star, you will need star 2.7 and above
+# 
 star_mapping:
-    options: --outFilterMismatchNoverLmax 0.05 --seedSearchStartLmax 20
+    options: " --limitBAMsortRAM 30000000000 --outFilterMismatchNoverLmax 0.05 --seedSearchStartLmax 20 "
     legacy: True
     threads: 4
     resources:
-      mem: 34G
+      mem: 32G
 
 ##############################################################################
 # STAR indexing section
