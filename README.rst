@@ -158,6 +158,7 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.18.0    * New plots in the HTML reports. Includes version of executables.
 0.17.2    * CHANGES: in star section, added --limitBAMsortRAM and set to 30G
           * BUG: Fix missing params (options) in star_mapping rule not taken
             into account
