@@ -7,6 +7,8 @@
 # If input_directory provided, use it otherwise if input_pattern provided,
 # use it, otherwise use input_samples.
 # ============================================================================
+sequana_wrappers: "v0.15.1"
+
 input_directory:
 input_readtag: _R[12]_
 input_pattern: '*fastq.gz'
@@ -43,14 +45,6 @@ general:
     contaminant_file:
     rRNA_feature: rRNA
     custom_gff: ''
-
-
-######################
-# if files are required for a pipeline and are within sequana or should
-# be downloaded before the pipeline provide them in this section
-# Note that sequana and url fields are followed by itemised files or links
-# using the front dashes
-requirements: ''
 
 
 #################################################################

@@ -69,7 +69,13 @@ class Options(argparse.ArgumentParser):
             "--rRNA-feature",
             default="rRNA",
             help="""Feature name corresponding to the rRNA to be identified in
-the input GFF/GTF files""",
+the input GFF/GTF files. Must exist and be valid. If you do not have any, 
+you may skip this step using --skip-rRNA or provide a fasta file using --contaminant-file""",
+        )
+        pipeline_group.add_argument(
+            "--skip-rRNA",
+            action="store_true",
+            help="""skip the mapping on rRNA feature. ignored if --contaminant-file is provided""",
         )
         pipeline_group.add_argument(
             "--contaminant-file",
@@ -207,6 +213,8 @@ def main(args=None):
             logger.warning(
                 "You are using a custom FASTA --contaminant_file so --rRNA-feature will be ignored"
             )
+            cfg.general.rRNA_feature = None
+        elif options.skip_rRNA:
             cfg.general.rRNA_feature = None
         else:
             cfg.general.rRNA_feature = options.rRNA_feature

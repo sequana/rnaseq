@@ -7,6 +7,8 @@ channels:
 - r
 
 dependencies:
+- cutadapt
+- atropos
 - bowtie
 - samtools>1.7
 - bamtools
