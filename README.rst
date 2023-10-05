@@ -158,6 +158,8 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.18.1    * fastp multiqc regression. Fixed missing sample names by updating
+            multiqc_config and adding sample names in the output filename
 0.18.0    * New plots in the HTML reports. Includes version of executables.
 0.17.2    * CHANGES: in star section, added --limitBAMsortRAM and set to 30G
           * BUG: Fix missing params (options) in star_mapping rule not taken

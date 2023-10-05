@@ -115,7 +115,8 @@ sp:
         fn: '*Log.final.out'
     cutadapt:
         fn: 'cutadapt.txt'
-
+    fastp:
+        fn: '*fastp*json'
     #rna_seqc/metrics:
     #    fn: "*metrics.tsv"
     #rna_seqc/coverage:
