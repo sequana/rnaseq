@@ -370,8 +370,8 @@ elif manager.config.trimming.software_choice == "fastp":
             sample=manager.getrawdata()
         output:
             trimmed=__clean_fastq__output,
-            html="{sample}/fastp/fastp.html",
-            json="{sample}/fastp/fastp.json", # must be named fastp
+            html="{sample}/fastp/fastp_{sample}.html",
+            json="{sample}/fastp/fastp_{sample}.json", # must be named fastp
         log:
             "logs/fastp/{sample}.log"
         params:
