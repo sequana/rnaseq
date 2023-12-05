@@ -379,6 +379,8 @@ elif manager.config.trimming.software_choice == "fastp":
             adapters=config["fastp"]["adapters"]
         threads:
             config["fastp"].get("threads", 4)
+        resources:
+            **config['fastp']['resources']
         container:
             config['apptainers']['fastp']
         wrapper:
@@ -982,6 +984,10 @@ rule multiqc:
         modules=config['multiqc']['modules']
     log:
         "multiqc/multiqc.log"
+    resources:
+        **config['multiqc']['resources']
+    container:
+        config["apptainers"]["multiqc"]
     wrapper:
        f"{manager.wrappers}/wrappers/multiqc"
 
@@ -1012,9 +1018,9 @@ rule dot2svg:
 
 
 rule prepare_DGE_analysis:
-    input: 
+    input:
         features="post_analysis/all_features.out",
-    output: 
+    output:
         rnadiff="post_analysis/rnadiff.sh",
         design="post_analysis/design.csv"
     run:
@@ -1059,7 +1065,7 @@ onsuccess:
     # Create plots about stats
     from sequana import logger as log
     from sequana import BAM
-    from sequana.modules_report.summary import SummaryModule2
+    from sequana.modules_report.summary import SequanaReport
 
     import colorlog
     log = colorlog.getLogger("sequana.rnaseq")
@@ -1068,14 +1074,6 @@ onsuccess:
         extra_files_to_remove=["requirements.txt"],
         extra_dirs_to_remove=[".genomes", "tmp", "logs"])
     manager.clean_multiqc("multiqc/multiqc_report.html")
-
-    # THE HTML REPORT is defined hereafter
-    #
-    from sequana_pipelines import rnaseq
-    data = {"name": "rnaseq",
-            "rulegraph": ".sequana/rulegraph.svg",
-            "stats": "stats.txt",
-            "pipeline_version": rnaseq.version}
 
 
     try:
@@ -1149,38 +1147,44 @@ onsuccess:
     
     # Include the bowtie plot
     intro += """<h2>Mapping rate</h2>"""
-    try:
+    if config['general']['aligner'] == "bowtie2":
         from sequana.multiqc.plots import Bowtie2
-        filename = "multiqc/multiqc_data/mqc_bowtie2_se_plot_1.txt"
-        if not os.path.exists(filename):
-            filename = "multiqc/multiqc_report_data/mqc_bowtie2_se_plot_1.txt"
+        if not manager.paired:
+            filename = "multiqc/multiqc_data/mqc_bowtie2_se_plot_1.txt"
+            if not os.path.exists(filename):
+                filename = "multiqc/multiqc_report_data/mqc_bowtie2_se_plot_1.txt"
+        else:
+            filename = "multiqc/multiqc_data/mqc_bowtie2_pe_plot_1.txt"
+            if not os.path.exists(filename):
+                filename = "multiqc/multiqc_report_data/mqc_bowtie2_se_plot_1.txt"
         br = Bowtie2(filename)
         fig = br.plot(html_code=True)
         from  plotly import offline
         intro += """<p>The mapping was performed with bowtie2. Here below are the percentage of mapping for each sample. See also the multiqc report.</p>""" + offline.plot(fig, output_type="div", include_plotlyjs=True)
-    except Exception:
-        pass
 
-    try:
+    elif config["general"]["aligner"] == "star":
         from sequana.multiqc.plots import STAR
         filename = "multiqc/multiqc_report_data/multiqc_star.txt"
+        if not os.path.exists(filename):
+            filename = "multiqc/multiqc_data/multiqc_star.txt"
         br = STAR(filename)
         fig = br.plot(html_code=True)
         from  plotly import offline
         intro += """<p>The mapping was performed with STAR. Here below are the percentage of mapping for each sample. See also the multiqc report.</p>""" + offline.plot(fig, output_type="div", include_plotlyjs=True)
-    except Exception :
-        pass
 
     try:
         from sequana.multiqc.plots import FeatureCounts
         intro += """<h2>Annotation rate</h2>"""
         filename = "multiqc/multiqc_report_data/mqc_featureCounts_assignment_plot_1.txt"
+        if not os.path.exists(filename):
+            filename = "multiqc/multiqc_data/mqc_featureCounts_assignment_plot_1.txt"
+
         br = FeatureCounts(filename)
         fig = br.plot(html_code=True)
         from  plotly import offline
         intro += """<p>The annotation was performed with subread/feature counts software. Here below is the percentage of reads assigned to the requested feature (usually gene; see the config file here below). </p>""" + offline.plot(fig, output_type="div", include_plotlyjs=True)
-    except Exception :
-        pass
+    except Exception as err:
+        print(err)
 
     if manager.globals['strand_summary']:
         intro += """<h2>Strandness</h2>"""
@@ -1194,7 +1198,7 @@ onsuccess:
         else:
             intro += "Strandness was guessed from the data. </p>"
 
-        image = SummaryModule2.png_to_embedded_png("strand", "outputs/strand_summary.png",
+        image = SequanaReport.png_to_embedded_png("strand", "outputs/strand_summary.png",
                      style="width:80%; height:40%")
         intro += image
 
@@ -1216,13 +1220,11 @@ onsuccess:
     except Exception:
         pass
 
-    s = SummaryModule2(data, intro)
+    data = manager.getmetadata()
+    s = SequanaReport(data, intro)
 
     shell("chmod -R g+w .")
     shell("rm -rf rulegraph")
 
 onerror:
-    from sequana_pipetools.errors import PipeError
-    p = PipeError("rnaseq")
-    p.status()
-
+    manager.onerror()

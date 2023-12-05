@@ -2,6 +2,8 @@ import os
 import tempfile
 import subprocess
 import sys
+from  sequana_pipelines.rnaseq.main import main
+from click.testing import CliRunner
 
 from . import test_dir
 
@@ -21,23 +23,24 @@ def test_standalone_subprocess():
 # slow
 def test_standalone_script():
     directory = tempfile.TemporaryDirectory()
-    import sequana_pipelines.rnaseq.main as m
-    sys.argv = ["test", "--input-directory", sharedir, "--genome-directory",
+
+    runner = CliRunner()
+    results = runner.invoke(main, ["--input-directory", sharedir, "--genome-directory",
         saccer3, "--force", "--aligner", "bowtie2", 
              "--feature-counts-feature-type", 'gene,tRNA',
-        "--rRNA-feature", "rRNA_gene"]   # ideally should be rRNA but current
-    m.main()
+        "--rRNA-feature", "rRNA_gene"])   # ideally should be rRNA but current
+    assert results.exit_code == 0
 
 
 def test_standalone_script_contaminant():
     directory = tempfile.TemporaryDirectory()
-    import sequana_pipelines.rnaseq.main as m
-    sys.argv = ["test", "--input-directory", sharedir, "--genome-directory",
+    runner = CliRunner()
+    results = runner.invoke(main, ["--input-directory", sharedir, "--genome-directory",
         saccer3, "--force", "--aligner", "bowtie2", 
              "--feature-counts-feature-type", 'gene,tRNA', 
             "--contaminant-file", "test.fa",
-        "--rRNA-feature", "rRNA_gene"]   # ideally should be rRNA but current
-    m.main()
+        "--rRNA-feature", "rRNA_gene"])   # ideally should be rRNA but current
+    assert results.exit_code == 0
 
 
 # fast

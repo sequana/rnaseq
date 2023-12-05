@@ -53,9 +53,6 @@ mapping:
             "custom_gff":
                 type: str
 
-    "requirements":
-        type: str
-
     "add_read_group":
       type: map
       mapping:
@@ -92,9 +89,12 @@ mapping:
             required: True
             range: { min: 1 }
         "disable_adapter_trimming":
-                type: bool
+            type: bool
         "disable_quality_filtering":
-                type: bool
+            type: bool
+        "resources":
+            type: any
+            required: true
 
 
     "cutadapt":
@@ -148,6 +148,9 @@ mapping:
                 type: str
             "input_directory":
                 type: str
+            "resources":
+                type: any
+                required: true
 
 
     "feature_counts":

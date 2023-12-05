@@ -158,6 +158,7 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.19.0    * Refactorisation to use click
 0.18.1    * fastp multiqc regression. Fixed missing sample names by updating
             multiqc_config and adding sample names in the output filename
 0.18.0    * New plots in the HTML reports. Includes version of executables.
