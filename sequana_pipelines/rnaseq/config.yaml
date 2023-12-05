@@ -7,7 +7,7 @@
 # If input_directory provided, use it otherwise if input_pattern provided,
 # use it, otherwise use input_samples.
 # ============================================================================
-sequana_wrappers: "v0.15.1"
+sequana_wrappers: "v23.12.5"
 
 input_directory:
 input_readtag: _R[12]_
@@ -25,6 +25,8 @@ apptainers:
   fastp: "https://zenodo.org/record/7319782/files/fastp_0.23.2.img"
   igvtools: "https://zenodo.org/record/7022635/files/igvtools_2.12.0.img"
   graphviz: "https://zenodo.org/record/7928262/files/graphviz_7.0.5.img"
+  multiqc: "https://zenodo.org/record/10205070/files/multiqc_1.16.0.img"
+
 
 # =========================================== Sections for the users
 
@@ -130,6 +132,8 @@ fastp:
     threads: 4
     disable_adapter_trimming: false
     disable_quality_filtering: false
+    resources:
+        mem: 8G
 
 #######################################################
 # Quality trimming software choice
@@ -390,6 +394,8 @@ multiqc:
     modules: ''
     input_directory: .
     config_file: multiqc_config.yaml
+    resources:
+        mem: 8G
 
 
 

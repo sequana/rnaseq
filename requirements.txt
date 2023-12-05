@@ -1,4 +1,0 @@
-sequana>=0.15.4
-sequana_pipetools>=0.14.0
-cutadapt
-atropos

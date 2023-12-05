@@ -1,0 +1,15 @@
+cutadapt
+picard
+bowtie
+bowtie2
+multiqc
+STAR
+featureCounts
+deeptools
+gffread
+salmon
+fastp
+fastqc
+samtools
+bamtools
+bedtools
