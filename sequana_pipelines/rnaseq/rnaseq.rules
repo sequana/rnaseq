@@ -63,7 +63,7 @@ __gff_file__   = f"{__prefix_name__}.gff"
 #
 if manager.config['general']['custom_gff']:
     __gff_file__   = manager.config['general']['custom_gff']
-assert os.path.exists(__gff_file__)
+assert os.path.exists(__gff_file__), f"GFF file {__gff_file__} does not exist"
 
 # check existence of fasta and gff before starting;
 for this in [__fasta_file__, __gff_file__]:
@@ -858,23 +858,21 @@ expected_output.append("post_analysis/all_features.out")
 
 if config['rseqc']['do']:
 
-    if config['rseqc']['bed_file']:
-        __bed__file =  config['rseqc']['bed_file']
-    else:
-        __bed__file = "outputs/temp.bed"
-        rule gff2bed:
-            input: __gff_file__
-            output: __bed__file
-            run:
-                from sequana import GFF3
-                g = GFF3(input[0])
-                g.to_bed(output[0], 'Name')
+    rule gff2bed:
+        input:
+            gff=__gff_file__
+        output:
+            bed="tmp/temp.bed" # config['rseqc'].get('bed_file', "tmp/temp.bed")
+        message: "Build BED file from GFF using Sequana"
+        run:
+            from sequana import GFF3
+            g = GFF3(input[0])
+            g.to_bed(output[0], 'Name')
 
     rule rseqc:
         input:
             bam=__final_bam__,
-            bed=__bed__file
-
+            bed=rules.gff2bed.output.bed
         # no need to put all outputs
         output:
             bam_stat= "{sample}/rseqc/{sample}_bam_stat.txt",
@@ -889,27 +887,27 @@ if config['rseqc']['do']:
         shell:
             """
             # for paired data only
-            inner_distance.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample} -r {input.bed}
+            inner_distance.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample} -r {input.bed} &>{log}
 
             # For now GC not very useful in the output so commented
-            # read_GC.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample}
+            # read_GC.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample} &>{log}
 
             # genebody coverage
-            geneBody_coverage.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample} -r {input.bed} 1>{log}2>{log}
+            geneBody_coverage.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample} -r {input.bed} &>{log}
 
             # uses bigwig redundant with geneBody_coverage
-            # geneBody_coverage2.py -i {wildcards.sample}/bamCoverage/{wildcards.sample}.norm.bw  -o {wildcards}/rseq/{wildcards.sample} -r test.bed
+            # geneBody_coverage2.py -i {wildcards.sample}/bamCoverage/{wildcards.sample}.norm.bw  -o {wildcards}/rseq/{wildcards.sample} -r test.bed &>{log}
 
             # Not included in the multiqc module so commented for now
             #clipping_profile.py -i {input.bam} -s {params.paired} -o {wildcards.sample}/rseqc/{wildcards.sample}
-            read_duplication.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample}
-            junction_annotation.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample} -r {input.bed}
-            junction_saturation.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample}  -r {input.bed}
-            infer_experiment.py -i {input.bam} -r {input.bed} > {wildcards.sample}/rseqc/{wildcards.sample}.infer.txt
+            read_duplication.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample} &>{log}
+            junction_annotation.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample} -r {input.bed}  &>{log}
+            junction_saturation.py -i {input.bam} -o {wildcards.sample}/rseqc/{wildcards.sample}  -r {input.bed} &>{log}
+            infer_experiment.py -i {input.bam} -r {input.bed} > {wildcards.sample}/rseqc/{wildcards.sample}.infer.txt &>{log}
 
             # bam stats  KEEP last since that is the expected output to make sure
             # previous files (not listed in output:) are computed first.
-            bam_stat.py -i {input.bam} > {output.bam_stat}
+            bam_stat.py -i {input.bam} > {output.bam_stat} &>{log}
             """
 
     # one series is enough. if bam_stats is created, others are also created
@@ -938,10 +936,26 @@ if config["rnaseqc"]["do"] and config['general']['aligner'] != 'salmon':
             logs.critical(f"{__gtf_file__} not found in {gdir}. Trying the GFF file")
             __gtf_file__ = __prefix_name__ + ".gff"
 
+
+    rule rnaseqc_fixup:
+        input:
+            gtf = __gtf_file__
+        output:
+            gtf = temp("tmp/test.gtf")
+        run:
+            # If input GTF has no exon or genes, an error message is printed and 
+            # no files are created. This seems to be an issue in rnaseqc. 
+            # So, we create dummy gene and exon
+            with open(output.gtf, "w") as ff:
+                ff.write(open(input['gtf'], "r").read())
+                ff.write('myCHR\tSGD\tgene\t0\t0\t.\t+\t0\tgene_id "dummy"\n')
+                ff.write('myCHR\tSGD\texon\t0\t0\t.\t+\t0\texon_id "dummy"\n')
+                ff.close()
+
     rule rnaseqc:
         input:
             bam = __final_bam__,
-            gtf = __gtf_file__
+            gtf = rules.rnaseqc_fixup.output.gtf
         output:
             metrics = "{sample}/rnaseqc/{sample}.metrics.tsv"
         log:
@@ -949,18 +963,14 @@ if config["rnaseqc"]["do"] and config['general']['aligner'] != 'salmon':
         params:
             directory = "{sample}/rnaseqc",
             options= config['rnaseqc']['options']
-        run:
-            # If input GTF has no exon or genes, an error message is printed and 
-            # no files are created. This seems to be an issue in rnaseqc. 
-            # So, we create dummy gene and exon
-            from easydev import TempFile
-            with TempFile(suffix=".gtf") as fout:
-                ff = open(fout.name, "w")
-                ff.write('myCHR\tSGD\tgene\t0\t0\t.\t+\t0\tgene_id "dummy";')
-                ff.write('myCHR\tSGD\texon\t0\t0\t.\t+\t0\texon_id "dummy";')
-                ff.write(open(input['gtf'], "r").read())
-                ff.close()
-                shell("rnaseqc " + fout.name + " {input.bam} {params.directory} -s {wildcards.sample} {params.options} &>{log}")
+        resources:
+            **config["rnaseqc"]["resources"]
+        container:
+            config["apptainers"]["rnaseqc"]
+        shell:
+            """
+            rnaseqc {input.gtf} {input.bam} {params.directory} -s {wildcards.sample} {params.options} &>{log}
+            """
 
     expected_output.extend(expand("{sample}/rnaseqc/{sample}.metrics.tsv", sample=manager.samples))
 
@@ -1037,7 +1047,7 @@ rule prepare_DGE_analysis:
 	        with open("post_analysis/README.rst", "w") as fout:
 	            fout.write(f"""{msg}
 	The design.csv file must be formatted as follows (for 2 conditions with 3 replicates each):
-	
+
 	label,condition
 	samplename_1,condition_name_1
 	samplename_2,condition_name_1
@@ -1046,7 +1056,7 @@ rule prepare_DGE_analysis:
 	samplename_5,condition_name_2
 	samplename_6,condition_name_2
 	""")
-	
+
 	    # 2. save the script
 	    with open(output.rnadiff, "w") as fout:
 	        attribute = config['feature_counts']['attribute']
@@ -1064,7 +1074,6 @@ localrules:  rulegraph, prepare_DGE_analysis
 onsuccess:
     # Create plots about stats
     from sequana import logger as log
-    from sequana import BAM
     from sequana.modules_report.summary import SequanaReport
 
     import colorlog
@@ -1101,6 +1110,7 @@ onsuccess:
 
 
     rRNA_done = True
+    intro += """<h2>ribosomal / contaminant content</h2>"""
     try:
         if os.path.exists("multiqc/multiqc_report_data/multiqc_bowtie1.txt"):
             df = pd.read_csv("multiqc/multiqc_report_data/multiqc_bowtie1.txt", sep='\t')
@@ -1108,24 +1118,24 @@ onsuccess:
             df = pd.read_csv("multiqc/multiqc_data/multiqc_bowtie1.txt", sep='\t')
         else:
             rRNA_done = False
-            raise Exception
 
-        intro += """<h2>ribosomal / contaminant content</h2>"""
-        if "reads_aligned_percentage" in df.columns:
-            rRNA = int(df.reads_aligned_percentage.mean()*100)/100
+        if rRNA_done:
+            if "reads_aligned_percentage" in df.columns:
+                rRNA = int(df.reads_aligned_percentage.mean()*100)/100
+            else:
+                rRNA = int((100 - df.not_aligned_percentage.mean())*100)/100
+
+            if rRNA < 10:
+                intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is low (as expected). "
+            elif rRNA < 20:
+                intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is moderately low. "
+            elif rRNA > 20 and rRNA <50:
+                rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is relatively high. "
+            elif rRNA >= 50:
+                rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is very high. "
         else:
-            rRNA = int((100 - df.not_aligned_percentage.mean())*100)/100
+            intro += f"<p>rRNA content not computed (no rRNA gene or contaminant provided)</p>"
 
-        if rRNA < 10:
-            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is low (as expected). "
-        elif rRNA < 20:
-            intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is moderately low. "
-        elif rRNA > 20:
-            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is relatively high. "
-        elif rRNA > 50:
-            rRNA += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is very high high. "
-
-        intro += """Please see the <a href="multiqc/multiqc_report.html#bowtie1">section of the multiqc report</a> for details. Here below</p>"""
     except Exception as err:
         print(err)
         pass
@@ -1144,7 +1154,7 @@ onsuccess:
     except Exception as err:
         print(err)
 
-    
+
     # Include the bowtie plot
     intro += """<h2>Mapping rate</h2>"""
     if config['general']['aligner'] == "bowtie2":
@@ -1204,22 +1214,12 @@ onsuccess:
 
     intro+=    """<h2>Differential analysis</h2>
     <p>
-    Differentially expressed genes analysis is not performed automatically with this pipeline. However, information, feature counts, and other materials can be found in the directory ./post_analysis/. Most probably an analysis is present. If so, please open the directory in  <a href="post_analysis/rnadiff/">rnadiff</a> report.
+    Differentially expressed genes analysis is not performed automatically with this pipeline. However, information, feature counts, and other materials can be found in the directory <a href="./post_analysis/.">post_analysis</a> where the standalone 'sequana rnadiff' can be used with DeSEq2. Most probably an analysis is present. If so, please open the directory in  <a href="post_analysis/rnadiff/">rnadiff</a> report.
     </p>
     """
 
 
     # Now the final report. add the original command in the HTML report
-    try:
-        command = ""
-        with open(".sequana/info.txt", "r") as fin:
-            for line in fin:
-                if not line.startswith("#"):
-                    command += line
-        intro += f"<h2>Command used</h2>{command}"
-    except Exception:
-        pass
-
     data = manager.getmetadata()
     s = SequanaReport(data, intro)
 

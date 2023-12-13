@@ -13,41 +13,38 @@
 #  documentation: http://sequana.readthedocs.io
 #
 ##############################################################################
-import sys
 import os
 import shutil
 import subprocess
+import sys
 
-import rich_click as click
 import click_completion
-
-
-from sequana_pipetools.options import *
+import rich_click as click
 from sequana_pipetools import SequanaManager
+from sequana_pipetools.options import *
 
 click_completion.init()
 NAME = "rnaseq"
-
 
 
 help = init_click(
     NAME,
     groups={
         "Pipeline Specific": [
-             "--aligner",
-             "--contaminant-file",
-             "--do-igvtools",
-             "--do-bam-coverage",
-             "--do-mark-duplicates",
-             "--do-rnaseqc",
-             "--do-rseqc",
-             "--genome-directory",
-             "--rnaseqc-gtf-file",
-             "--rRNA-feature",
-             "--rseqc-bed-file",
-             "--skip-rRNA",
-             "--skip-gff-check",
-             "--trimming-quality",
+            "--aligner",
+            "--contaminant-file",
+            "--do-igvtools",
+            "--do-bam-coverage",
+            "--do-mark-duplicates",
+            "--do-rnaseqc",
+            "--do-rseqc",
+            "--genome-directory",
+            "--rnaseqc-gtf-file",
+            "--rRNA-feature",
+            "--rseqc-bed-file",
+            "--skip-rRNA",
+            "--skip-gff-check",
+            "--trimming-quality",
         ],
     },
 )
@@ -60,11 +57,14 @@ help = init_click(
 @include_options_from(ClickGeneralOptions)
 @include_options_from(ClickTrimmingOptions)
 @include_options_from(ClickFeatureCountsOptions)
-@click.option("--genome-directory",
-    "genome_directory", default=".",
+@click.option(
+    "--genome-directory",
+    "genome_directory",
+    default=".",
     show_default=True,
     type=click.Path(dir_okay=True, file_okay=False),
-    required=True)
+    required=True,
+)
 @click.option(
     "--aligner",
     "aligner",
@@ -78,12 +78,12 @@ help = init_click(
     help="""Feature name corresponding to the rRNA to be identified in
 the input GFF/GTF files. Must exist and be valid. If you do not have any,
 you may skip this step using --skip-rRNA or provide a fasta file using --contaminant-file""",
-        )
+)
 @click.option(
-   "--skip-rRNA",
-   "skip_rRNA",
-   is_flag=True,
-   help="""skip the mapping on rRNA feature. ignored if --contaminant-file is provided""",
+    "--skip-rRNA",
+    "skip_rRNA",
+    is_flag=True,
+    help="""skip the mapping on rRNA feature. ignored if --contaminant-file is provided""",
 )
 @click.option(
     "--contaminant-file",
@@ -99,7 +99,7 @@ fasta file to search for contaminants""",
     default=False,
     show_default=True,
     help="""By default we check the coherence between the input
-GFF file and related options (e.g. --feature_counts_feature_type and 
+GFF file and related options (e.g. --feature_counts_feature_type and
 --feature_counts_attribute options). This may take time e.g. for mouse or human.
 Using this option skips the sanity checks""",
 )
@@ -109,7 +109,7 @@ Using this option skips the sanity checks""",
     help="""if set, this will compute TDF files that can be imported in
 IGV browser. TDF file allows to quickly visualise the coverage of the mapped
 reads.""",
-        )
+)
 @click.option(
     "--do-bam-coverage",
     is_flag=True,
@@ -120,15 +120,11 @@ reads.""",
     is_flag=True,
     help="""Mark duplicates. To be used e.g. with QCs""",
 )
-@click.option(
-    "--do-rnaseqc",
-    is_flag=True,
-    help="do RNA-seq QC using RNAseQC v2"
-)
+@click.option("--do-rnaseqc", is_flag=True, help="do RNA-seq QC using RNAseQC v2")
 @click.option(
     "--rnaseqc-gtf-file",
     help="""The GTF file to be used for RNAseQC. Without a valid GTF,
-    RNAseqQC will not work. You may try sequana.gff3 module to build the gtf from the GFF file""",
+    RNAseqQC will not work. You may try sequana gff-to-gtf application.""",
 )
 @click.option(
     "--do-rseqc",
@@ -137,12 +133,12 @@ reads.""",
 corresponding to your GFF file. For prokaryotes, the BED file is created on the
 fly.""",
 )
-@click.option(
-    "--rseqc-bed-file", 
-    help="""The rseQC input bed file."""
-)
+@click.option("--rseqc-bed-file", help="""The rseQC input bed file.""")
 def main(**options):
 
+    if options["from_project"]:
+        click.echo("--from-project Not yet implemented")
+        sys.exit(1)
     # the real stuff is here
     manager = SequanaManager(options, NAME)
     manager.setup()
@@ -151,10 +147,9 @@ def main(**options):
     options = manager.options
     cfg = manager.config.config
 
-
     from sequana_pipetools import logger
-    logger.setLevel(options.level)
 
+    logger.setLevel(options.level)
 
     manager.fill_data_options()
     # --------------------------------------------------------- general
@@ -176,9 +171,7 @@ def main(**options):
     # mutually exclusive options
     if options.contaminant_file:
         cfg.general.contaminant_file = os.path.abspath(options.contaminant_file)
-        logger.warning(
-            "You are using a custom FASTA --contaminant_file so --rRNA-feature will be ignored"
-        )
+        logger.warning("You are using a custom FASTA --contaminant_file so --rRNA-feature will be ignored")
         cfg.general.rRNA_feature = None
     elif options.skip_rRNA:
         cfg.general.rRNA_feature = None
@@ -211,7 +204,6 @@ def main(**options):
         cfg.fastp.disable_quality_filtering = False
         cfg.fastp.disable_adapter_trimming = False
 
-
     # ----------------------------------------------------- feature counts
     cfg.feature_counts.options = options.feature_counts_options
     cfg.feature_counts.strandness = options.feature_counts_strandness
@@ -239,7 +231,8 @@ def main(**options):
             )
             cfg.rnaseqc.do = False
         if options.aligner in ["salmon"]:
-            logger.info("WARNING"
+            logger.info(
+                "WARNING"
                 "You asked for RNA_seqc QC assessements but no"
                 " BAM will be generated by the salmon aligner. Switching off this option. "
             )
@@ -252,7 +245,7 @@ def main(**options):
 
     # -------------------------------------------------------- RNAdiff
 
-    #import sequana_pipelines.rnaseq
+    # import sequana_pipelines.rnaseq
 
     # SANITY CHECKS
     # -------------------------------------- do we find rRNA feature in the GFF ?
@@ -275,10 +268,7 @@ def main(**options):
         valid_attributes = gff.attributes  # about 10 seconds
 
         # first check the rRNA feature
-        if (
-            cfg["general"]["rRNA_feature"]
-            and cfg["general"]["rRNA_feature"] not in valid_features
-        ):
+        if cfg["general"]["rRNA_feature"] and cfg["general"]["rRNA_feature"] not in valid_features:
 
             logger.error(
                 "rRNA feature not found in the input GFF ({})".format(gff_file)
@@ -321,54 +311,41 @@ def main(**options):
                 )
                 sys.exit()
             else:
-                unique = set(
-                    [x[fc_attr] for k, x in dd.attributes.items() if fc_attr in x]
-                )
-                logger.info(
-                    f"Found {S} '{fc_attr}' entries for the attribute [{len(unique)} unique entries]"
-                )
+                unique = set([x[fc_attr] for k, x in dd.attributes.items() if fc_attr in x])
+                logger.info(f"Found {S} '{fc_attr}' entries for the attribute [{len(unique)} unique entries]")
 
             if S != len(unique):
-                logger.warning(
-                    "Attribute non-unique. Feature counts should handle it"
-                )
+                logger.warning("Attribute non-unique. Feature counts should handle it")
 
             if options.feature_counts_extra_attributes:
                 for extra_attr in cfg.feature_counts.extra_attributes.split(","):
                     if extra_attr not in set(attributes):
-                        logger.error(
-                            "{extra_attr} not found in the GFF attributes. Try one of {set(attributes)}"
-                        )
+                        logger.error("{extra_attr} not found in the GFF attributes. Try one of {set(attributes)}")
                         sys.exit()
-
 
     # need to move the custom file into the working directoty
     if "," in cfg.feature_counts.feature:
-        logger.info(
-            "Building a custom GFF file (custom.gff) using Sequana. Please wait"
-        )
+        logger.info("Building a custom GFF file (custom.gff) using Sequana. Please wait")
         genome_directory = os.path.abspath(cfg.general.genome_directory)
         genome_name = genome_directory.rsplit("/", 1)[1]
         prefix_name = genome_directory + "/" + genome_name
 
         from sequana import GFF3
+
         gff = GFF3(prefix_name + ".gff")
         fc_types = cfg.feature_counts.feature.strip().split(",")
         gff.save_gff_filtered(features=fc_types, filename="custom.gff")
         cfg.general.custom_gff = "custom.gff"
 
-
     # finalise the command and save it; copy the snakemake. update the config
     # file and save it.
     manager.teardown()
-
 
     try:  # option added in latest version
         if cfg.general.custom_gff:
             shutil.copy(cfg.general.custom_gff, options.workdir)
     except:
         pass
-
 
 
 if __name__ == "__main__":

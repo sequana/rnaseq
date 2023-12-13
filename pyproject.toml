@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "sequana-rnaseq"
-version = "0.19.0"
+version = "0.19.1"
 description = "A RNAseq pipeline from raw reads to feature counts"
 authors = ["Sequana Team"]
 license = "BSD-3"
