@@ -60,7 +60,6 @@ help = init_click(
 @click.option(
     "--genome-directory",
     "genome_directory",
-    default=".",
     show_default=True,
     type=click.Path(dir_okay=True, file_okay=False),
     required=True,

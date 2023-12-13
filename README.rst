@@ -158,6 +158,8 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.19.2    * fix bowtie1 regression in the log file
+          * set genome directory default to None to enforce its usage
 0.19.1    * add rnaseqc container.
           * Update rseqc rules (redirection)
           * cleanup onsuccess rule

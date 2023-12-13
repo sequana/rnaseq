@@ -484,7 +484,7 @@ if manager.config.general.rRNA_feature or manager.config.general.contaminant_fil
         input:
             expand("{sample}/bowtie1_mapping_rna/{sample}_bowtie1.log", sample=manager.samples)
         output:
-            "logs/fix_bowtie1_log"
+            "logs/fix_bowtie1/{sample}.log"
         run:
 
             for filename in input:
@@ -501,7 +501,7 @@ if manager.config.general.rRNA_feature or manager.config.general.contaminant_fil
                             fout.write(line)
             with open(output[0], "w") as fout:
                 fout.write("")
-    expected_output += ["logs/fix_bowtie1_log"]
+    expected_output += expand("logs/fix_bowtie1/{sample}.log", sample=manager.samples)
 
 
 # ========================================================== bowtie2 mapping
