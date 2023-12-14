@@ -484,7 +484,7 @@ if manager.config.general.rRNA_feature or manager.config.general.contaminant_fil
         input:
             expand("{sample}/bowtie1_mapping_rna/{sample}_bowtie1.log", sample=manager.samples)
         output:
-            "logs/fix_bowtie1/{sample}.log"
+            "logs/fix_bowtie1/fix_bowtie1.log"
         run:
 
             for filename in input:
@@ -501,7 +501,7 @@ if manager.config.general.rRNA_feature or manager.config.general.contaminant_fil
                             fout.write(line)
             with open(output[0], "w") as fout:
                 fout.write("")
-    expected_output += expand("logs/fix_bowtie1/{sample}.log", sample=manager.samples)
+    expected_output += ["logs/fix_bowtie1/fix_bowtie1.log"]
 
 
 # ========================================================== bowtie2 mapping
@@ -1062,7 +1062,7 @@ rule prepare_DGE_analysis:
 	        attribute = config['feature_counts']['attribute']
 	        feature = config['feature_counts']['feature']
 	        fout.write("#/bin/sh\nsequana rnadiff --features all_features.out " +
-	            f" --annotation {__gff_file__} --design design.csv --feature-name {feature} --attribute-name {attribute}")
+	            f" --annotation-file {__gff_file__} --design design.csv --feature-name {feature} --attribute-name {attribute}")
 	    shell(f"chmod 755 {output.rnadiff}")
 
 
@@ -1166,7 +1166,7 @@ onsuccess:
         else:
             filename = "multiqc/multiqc_data/mqc_bowtie2_pe_plot_1.txt"
             if not os.path.exists(filename):
-                filename = "multiqc/multiqc_report_data/mqc_bowtie2_se_plot_1.txt"
+                filename = "multiqc/multiqc_report_data/mqc_bowtie2_pe_plot_1.txt"
         br = Bowtie2(filename)
         fig = br.plot(html_code=True)
         from  plotly import offline
