@@ -1218,7 +1218,6 @@ onsuccess:
     </p>
     """
 
-
     # Now the final report. add the original command in the HTML report
     data = manager.getmetadata()
     s = SequanaReport(data, intro)

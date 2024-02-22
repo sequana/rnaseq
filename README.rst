@@ -30,7 +30,9 @@ Installation
 
     pip install sequana_rnaseq --upgrade
 
-You will need third-party software such as bowtie2/star. Please see below for details.
+You will need third-party software such as bowtie2/star. However, if you choose to use aptainer/singularity,
+then nothing to install except singularity itself ! See below for details.
+
 
 Usage
 ~~~~~
@@ -38,7 +40,7 @@ Usage
 ::
 
     sequana_rnaseq --help
-    sequana_rnaseq --input-directory DATAPATH --genome-directory genome --aligner star
+    sequana_rnaseq --input-directory DATAPATH --genome-directory genome --aligner-choice star
 
 This creates a directory with the pipeline and configuration file. You will then need
 to execute the pipeline::
@@ -52,6 +54,28 @@ retrieve the pipeline itself and its configuration files and then execute the pi
     snakemake -s rnaseq.rules -c config.yaml --cores 4 --stats stats.txt
 
 Or use `sequanix <https://sequana.readthedocs.io/en/main/sequanix.html>`_ interface.
+
+
+Usage with apptainer:
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+With apptainer, initiate the working directory as follows::
+
+    sequana_rnaseq --use-apptainer
+
+Images are downloaded in the working directory but you can store then in a directory globally (e.g.)::
+
+    sequana_rnaseq --use-apptainer --apptainer-prefix ~/.sequana/apptainers
+
+and then::
+
+    cd rnaseq
+    sh rnaseq.sh
+
+if you decide to use snakemake manually, do not forget to add apptainer options::
+
+    snakemake -s rnaseq.rules -c config.yaml --cores 4 --use-apptainer --apptainer-prefix ~/.sequana/apptainers --apptainer-args "-B /home:/home"
+
 
 Requirements
 ~~~~~~~~~~~~
@@ -67,8 +91,7 @@ may change. A Message will inform you would you be missing an executable:
 - multiqc
 - samtools
 
-Note that bowtie>=2.4.2 is set to ensure the pipeline can be used with python 3.7-3.8-3.9 and the sequana-wrappers
-that supports bowtie2 with option --threads only (not previous versions). See environment.yaml or conda.yaml for latest list of required third-party tools.
+Note that bowtie>=2.4.2 is set to ensure the pipeline can be used with python 3.7-3.8-3.9 and the sequana-wrappers that supports bowtie2 with option --threads only (not previous versions). See environment.yaml or conda.yaml for latest list of required third-party tools.
 
 You can install most of the tools using `damona <https://damona.readthedocs.io>`_::
 
@@ -88,10 +111,6 @@ all dependencies for you::
     conda install --file https://raw.githubusercontent.com/sequana/rnaseq/main/conda.yaml
 
 For Linux users, we provide singularity images available through within the damona project (https://damona.readthedocs.io).
-
-To use apptainer, initialise the pipeline with the --use-singularity option and everything should be downloaded automatically for you, which also guarantees reproducibility:
-
-    sequana_rnaseq --input-directory data --use-singularity --genome-directory ....
 
 
 .. image:: https://raw.githubusercontent.com/sequana/sequana_rnaseq/main/sequana_pipelines/rnaseq/dag.png
@@ -158,6 +177,7 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.19.3    * fix regression with click to set the default rRNA to 'rRNA' again.
 0.19.2    * fix bowtie1 regression in the log file, paired end case in
             multiqc and rnadiff script (regression)
           * set genome directory default to None to enforce its usage
