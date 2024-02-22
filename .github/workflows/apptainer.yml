@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - dev
+  workflow_dispatch:
   pull_request:
     branches-ignore: []
   schedule:
@@ -49,9 +50,10 @@ jobs:
     - name: install package itself
       run: |
          pip install .
+         pip install "pulp==2.7.0" --no-deps
 
     - name: testing
       run: |
-        sequana_rnaseq --aligner bowtie2 --input-directory test/data/ --use-apptainer  --genome-directory test/data/Saccer3 && cd rnaseq && sh rnaseq.sh
+        sequana_rnaseq --aligner-choice bowtie2 --input-directory test/data/ --use-apptainer  --genome-directory test/data/Saccer3 && cd rnaseq && sh rnaseq.sh
 
 

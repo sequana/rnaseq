@@ -34,7 +34,7 @@ def test_standalone_script():
             "--genome-directory",
             saccer3,
             "--force",
-            "--aligner",
+            "--aligner-choice",
             "bowtie2",
             "--feature-counts-feature-type",
             "gene,tRNA",
@@ -58,7 +58,7 @@ def test_standalone_script_contaminant():
             "--genome-directory",
             saccer3,
             "--force",
-            "--aligner",
+            "--aligner-choice",
             "bowtie2",
             "--feature-counts-feature-type",
             "gene",
@@ -89,7 +89,7 @@ def test_standalone_script_wrong_feature():
         "--genome-directory",
         saccer3,
         "--force",
-        "--aligner",
+        "--aligner-choice",
         "bowtie2",
         "--feature-counts-feature-type",
         "dummy",
@@ -117,7 +117,7 @@ def test_standalone_script_wrong_reference():
         "--genome-directory",
         "dummy",
         "--force",
-        "--aligner",
+        "--aligner-choice",
         "bowtie2",
         "--working-directory",
         directory.name,
@@ -143,7 +143,7 @@ def test_standalone_script_wrong_triming():
         "--genome-directory",
         saccer3,
         "--force",
-        "--aligner",
+        "--aligner-choice",
         "bowtie2",
         "--software-choice",
         "dummy",
@@ -165,7 +165,7 @@ def test_full():
     with tempfile.TemporaryDirectory() as directory:
         wk = directory
 
-        cmd = f"sequana_rnaseq --input-directory {sharedir} --genome-directory {saccer3} --aligner bowtie2 --working-directory {wk} --force"
+        cmd = f"sequana_rnaseq --input-directory {sharedir} --genome-directory {saccer3} --aligner-choice bowtie2 --working-directory {wk} --force"
         subprocess.call(cmd.split())
 
         cmd = "snakemake -s rnaseq.rules --wrapper-prefix https://raw.githubusercontent.com/sequana/sequana-wrappers/  -p --cores 2 "
@@ -182,7 +182,7 @@ def test_full_star():
     with tempfile.TemporaryDirectory() as directory:
         wk = directory
 
-        cmd = f"sequana_rnaseq --input-directory {sharedir} --genome-directory {saccer3} --aligner star --working-directory {wk} --force"
+        cmd = f"sequana_rnaseq --input-directory {sharedir} --genome-directory {saccer3} --aligner-choice star --working-directory {wk} --force"
         subprocess.call(cmd.split())
 
         cmd = "snakemake -s rnaseq.rules --wrapper-prefix https://raw.githubusercontent.com/sequana/sequana-wrappers/  -p --cores 2 "
@@ -199,7 +199,7 @@ def __test_full_salmon():
     with tempfile.TemporaryDirectory() as directory:
         wk = directory
 
-        cmd = f"sequana_rnaseq --input-directory {sharedir} --genome-directory {saccer3} --aligner salmon --working-directory {wk} --force"
+        cmd = f"sequana_rnaseq --input-directory {sharedir} --genome-directory {saccer3} --aligner-choice salmon --working-directory {wk} --force"
         subprocess.call(cmd.split())
 
         cmd = "snakemake -s rnaseq.rules --wrapper-prefix https://raw.githubusercontent.com/sequana/sequana-wrappers/  -p --cores 2 "

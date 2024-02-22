@@ -31,7 +31,7 @@ help = init_click(
     NAME,
     groups={
         "Pipeline Specific": [
-            "--aligner",
+            "--aligner-choice",
             "--contaminant-file",
             "--do-igvtools",
             "--do-bam-coverage",
@@ -65,7 +65,7 @@ help = init_click(
     required=True,
 )
 @click.option(
-    "--aligner",
+    "--aligner-choice",
     "aligner",
     required=True,
     type=click.Choice(["bowtie2", "bowtie1", "star", "salmon"]),
@@ -74,6 +74,7 @@ help = init_click(
 @click.option(
     "--rRNA-feature",
     "rRNA",
+    default="rRNA",
     help="""Feature name corresponding to the rRNA to be identified in
 the input GFF/GTF files. Must exist and be valid. If you do not have any,
 you may skip this step using --skip-rRNA or provide a fasta file using --contaminant-file""",
