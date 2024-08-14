@@ -265,7 +265,7 @@ def main(**options):
         gff = GFF3(gff_file)
         df_gff = gff.df  # This takes one minute on eukaryotes. No need to
         valid_features = gff.features  # about 3 seconds
-        valid_attributes = gff.attributes  # about 10 seconds
+        valid_attributes = gff.get_attributes()  # about 10 seconds
 
         # first check the rRNA feature
         if cfg["general"]["rRNA_feature"] and cfg["general"]["rRNA_feature"] not in valid_features:

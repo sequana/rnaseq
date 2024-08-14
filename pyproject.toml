@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "sequana-rnaseq"
-version = "0.19.3"
+version = "0.19.4"
 description = "A RNAseq pipeline from raw reads to feature counts"
 authors = ["Sequana Team"]
 license = "BSD-3"
@@ -34,9 +34,10 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.8,<4.0"
-sequana = ">=0.16.0"
-sequana_pipetools = ">=0.16.2"
+sequana = ">=0.17.2"
+sequana_pipetools = ">=1.0.2"
 click-completion = "^0.5.2"
+pulp = "<2.8.0"
 
 
 [tool.poetry.scripts]
