@@ -366,7 +366,7 @@ elif manager.config.trimming.software_choice == "fastp":
         options_fastp += "--disable_quality_filtering"
 
     rule fastp:
-        input: 
+        input:
             sample=manager.getrawdata()
         output:
             trimmed=__clean_fastq__output,
@@ -425,7 +425,7 @@ else:
 # ==========  decompress and sanity check
 #
 if int(config['bowtie1_mapping_rna']['nreads']) != -1:
-    extra = int(config['bowtie1_mapping_rna']['nreads']) % 4
+    extra = int(config['bowtie1_mapping_rna']['nreads']) * 4
     config['bowtie1_mapping_rna']['nreads'] -= extra
 
 
@@ -723,7 +723,7 @@ else :
 fc_outdir = "post_analysis/feature_counts/"
 
 if manager.config.feature_counts.do and manager.config.general.aligner not in ['salmon']:
-    # Guessing strandness is not always straightfoward; Even when we set it; 
+    # Guessing strandness is not always straightfoward; Even when we set it;
     # collaborators may want to look at the other options. So, we compute
     # everything with the 3 different options of strandness.
     # We will copy one of them based on our criteria, but all 3 will be
@@ -769,7 +769,7 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
             f"{manager.wrappers}/wrappers/feature_counts"
 
 
-    # ===================== guessing the strand 
+    # ===================== guessing the strand
     #
     __guess_strandness__output = expand(fc_outdir + "{sample}_feature.out", sample=manager.samples)
     rule guess_strandness:
@@ -783,7 +783,7 @@ if manager.config.feature_counts.do and manager.config.general.aligner not in ['
             # We compute all strandness
             import sequana.featurecounts as fc
 
-            mfc = fc.MultiFeatureCount(rnaseq_folder=".", 
+            mfc = fc.MultiFeatureCount(rnaseq_folder=".",
                         tolerance=manager.config.feature_counts.tolerance)
             mfc.df.to_csv(output.summary)
 
@@ -943,8 +943,8 @@ if config["rnaseqc"]["do"] and config['general']['aligner'] != 'salmon':
         output:
             gtf = temp("tmp/test.gtf")
         run:
-            # If input GTF has no exon or genes, an error message is printed and 
-            # no files are created. This seems to be an issue in rnaseqc. 
+            # If input GTF has no exon or genes, an error message is printed and
+            # no files are created. This seems to be an issue in rnaseqc.
             # So, we create dummy gene and exon
             with open(output.gtf, "w") as ff:
                 ff.write(open(input['gtf'], "r").read())
