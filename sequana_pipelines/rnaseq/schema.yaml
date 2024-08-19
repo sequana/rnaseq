@@ -267,7 +267,7 @@ mapping:
             "nreads":
                 type: int
                 required: True
-                range: { min: -1}
+                range: { min: -1, max: 1e15}
 
     'igvtools':
         type: map

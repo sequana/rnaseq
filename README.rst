@@ -177,8 +177,8 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
-0.19.4    * Fix regression due to new sequana version
-          * 
+0.20.0    * Fix regression due to new sequana version
+          * Update summary html to use new sequana plots
 0.19.3    * fix regression with click to set the default rRNA to 'rRNA' again.
 0.19.2    * fix bowtie1 regression in the log file, paired end case in
             multiqc and rnadiff script (regression)

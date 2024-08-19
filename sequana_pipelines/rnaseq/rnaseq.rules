@@ -426,8 +426,7 @@ else:
 #
 if int(config['bowtie1_mapping_rna']['nreads']) != -1:
     extra = int(config['bowtie1_mapping_rna']['nreads']) * 4
-    config['bowtie1_mapping_rna']['nreads'] -= extra
-
+    config['bowtie1_mapping_rna']['nreads'] = extra
 
 rule sample_rRNA:
     input:
@@ -1159,14 +1158,9 @@ onsuccess:
     intro += """<h2>Mapping rate</h2>"""
     if config['general']['aligner'] == "bowtie2":
         from sequana.multiqc.plots import Bowtie2
-        if not manager.paired:
-            filename = "multiqc/multiqc_data/mqc_bowtie2_se_plot_1.txt"
-            if not os.path.exists(filename):
-                filename = "multiqc/multiqc_report_data/mqc_bowtie2_se_plot_1.txt"
-        else:
-            filename = "multiqc/multiqc_data/mqc_bowtie2_pe_plot_1.txt"
-            if not os.path.exists(filename):
-                filename = "multiqc/multiqc_report_data/mqc_bowtie2_pe_plot_1.txt"
+        filename = "multiqc/multiqc_data/multiqc_bowtie2.txt"
+        if not os.path.exists(filename):
+            filename = "multiqc/multiqc_report_data/multiqc_bowtie2.txt"
         br = Bowtie2(filename)
         fig = br.plot(html_code=True)
         from  plotly import offline
@@ -1185,9 +1179,9 @@ onsuccess:
     try:
         from sequana.multiqc.plots import FeatureCounts
         intro += """<h2>Annotation rate</h2>"""
-        filename = "multiqc/multiqc_report_data/mqc_featureCounts_assignment_plot_1.txt"
+        filename = "multiqc/multiqc_report_data/multiqc_featureCounts.txt"
         if not os.path.exists(filename):
-            filename = "multiqc/multiqc_data/mqc_featureCounts_assignment_plot_1.txt"
+            filename = "multiqc/multiqc_data/multiqc_featureCounts.txt"
 
         br = FeatureCounts(filename)
         fig = br.plot(html_code=True)

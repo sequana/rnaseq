@@ -165,7 +165,7 @@ def test_full():
     with tempfile.TemporaryDirectory() as directory:
         wk = directory
 
-        cmd = f"sequana_rnaseq --input-directory {sharedir} --genome-directory {saccer3} --aligner-choice bowtie2 --working-directory {wk} --force"
+        cmd = f"sequana_rnaseq --input-directory {sharedir} --genome-directory {saccer3} --aligner-choice bowtie2 --working-directory {wk} --force --rRNA-feature rRNA_gene"
         subprocess.call(cmd.split())
 
         cmd = "snakemake -s rnaseq.rules --wrapper-prefix https://raw.githubusercontent.com/sequana/sequana-wrappers/  -p --cores 2 "
@@ -182,7 +182,7 @@ def test_full_star():
     with tempfile.TemporaryDirectory() as directory:
         wk = directory
 
-        cmd = f"sequana_rnaseq --input-directory {sharedir} --genome-directory {saccer3} --aligner-choice star --working-directory {wk} --force"
+        cmd = f"sequana_rnaseq --input-directory {sharedir} --genome-directory {saccer3} --aligner-choice star --working-directory {wk} --force --rRNA-feature rRNA_gene"
         subprocess.call(cmd.split())
 
         cmd = "snakemake -s rnaseq.rules --wrapper-prefix https://raw.githubusercontent.com/sequana/sequana-wrappers/  -p --cores 2 "
