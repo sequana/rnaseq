@@ -161,7 +161,9 @@ Using our framework::
 where ANNOT is the annotation file of your analysis, FEAT and ATTR the attribute
 and feature used in your analysis (coming from the annotation file).
 
-This produces a HTML repot summarizing you differential analysis.
+This produces a HTML report summarizing you differential analysis.
+
+Note that you need DESEQ2 and other packages installed. You may also use this contaier: https://zenodo.org/records/5708856
 
 
 Rules and configuration details
