@@ -26,7 +26,7 @@ This is is the **RNA-seq** pipeline from the `Sequana <https://sequana.readthedo
 Installation
 ~~~~~~~~~~~~
 
-**sequana_rnaseq** is based on Python3, just install the package as follows:
+**sequana_rnaseq** is based on Python3, just install the package as follows::
 
     pip install sequana_rnaseq --upgrade
 
@@ -76,6 +76,17 @@ if you decide to use snakemake manually, do not forget to add apptainer options:
 
     snakemake -s rnaseq.rules -c config.yaml --cores 4 --use-apptainer --apptainer-prefix ~/.sequana/apptainers --apptainer-args "-B /home:/home"
 
+Usage on cluster with no internet access
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+We use wrappers that are hosted on github: https://github.com/cokelaer/sequana-wrappers/ but if you do not have internet access, you should download the repository locally before using the pipeline. For example:
+
+    export WRAPPERS=/home/user/Wrappers
+    git clone git@github.com:sequana/sequana-wrappers.git $WRAPPERS
+
+and define an environmental variable as follows (you should add it in your .profile or .bashrc for long term usage)::
+
+    export SEQUANA_WRAPPERS=git+file://$WRAPPERS
 
 Requirements
 ~~~~~~~~~~~~
