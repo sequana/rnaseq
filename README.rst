@@ -61,25 +61,21 @@ Usage with apptainer:
 
 With apptainer, initiate the working directory as follows::
 
-    sequana_rnaseq --use-apptainer
+    sequana_rnaseq --apptainer-prefix ~/.sequana/apptainers
 
-Images are downloaded in the working directory but you can store then in a directory globally (e.g.)::
-
-    sequana_rnaseq --use-apptainer --apptainer-prefix ~/.sequana/apptainers
-
-and then::
+Images are downloaded in the directory once for all; and then::
 
     cd rnaseq
     sh rnaseq.sh
 
-if you decide to use snakemake manually, do not forget to add apptainer options::
+if you decide to use snakemake manually, do not forget to add the apptainer-prefix options::
 
-    snakemake -s rnaseq.rules -c config.yaml --cores 4 --use-apptainer --apptainer-prefix ~/.sequana/apptainers --apptainer-args "-B /home:/home"
+    snakemake -s rnaseq.rules -c config.yaml --cores 4 --apptainer-prefix ~/.sequana/apptainers --apptainer-args "-B /home:/home"
 
 Usage on cluster with no internet access
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-We use wrappers that are hosted on github: https://github.com/cokelaer/sequana-wrappers/ but if you do not have internet access, you should download the repository locally before using the pipeline. For example:
+We use wrappers that are hosted on github: https://github.com/cokelaer/sequana-wrappers/ . There are copied locally in your home. However if you wish, you can download the repository locally before using the pipeline. For example:
 
     export WRAPPERS=/home/user/Wrappers
     git clone git@github.com:sequana/sequana-wrappers.git $WRAPPERS
@@ -190,6 +186,7 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.20.1    * Fix wrapper version in the config and fastp rule.
 0.20.0    * Fix regression due to new sequana version
           * Update summary html to use new sequana plots
 0.19.3    * fix regression with click to set the default rRNA to 'rRNA' again.
