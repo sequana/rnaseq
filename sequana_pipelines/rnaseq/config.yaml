@@ -7,7 +7,7 @@
 # If input_directory provided, use it otherwise if input_pattern provided,
 # use it, otherwise use input_samples.
 # ============================================================================
-sequana_wrappers: "v23.12.5"
+sequana_wrappers: "v24.8.29"
 
 input_directory:
 input_readtag: _R[12]_
@@ -310,7 +310,7 @@ feature_counts:
 # - threads: number of threads to be used
 bam_coverage:
     do: false
-    options: "--binSize 10 --genomeSize 2150000000"
+    options: "--binSize 10 --effectiveGenomeSize 2150000000"
     #extendReads: 65
     #minFragmentLength: 0 #Note that a value other than 0 will exclude all single-end reads.
     #maxFragmentLength: 0 #A value of 0 disables filtering and is needed for including single-end and orphan reads.

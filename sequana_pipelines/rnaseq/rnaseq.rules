@@ -375,7 +375,7 @@ elif manager.config.trimming.software_choice == "fastp":
         log:
             "logs/fastp/{sample}.log"
         params:
-            options=config['fastp']["options"],
+            options=options_fastp,
             adapters=config["fastp"]["adapters"]
         threads:
             config["fastp"].get("threads", 4)
