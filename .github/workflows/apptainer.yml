@@ -90,7 +90,7 @@ jobs:
     - name: Run Apptainer tests
       run: |
         sequana_rnaseq --aligner-choice bowtie2 \
-                --input-directory test/data/ 
+                --input-directory test/data/
                 --apptainer-prefix ~/.apptainer/cache \
                 --genome-directory test/data/Saccer3
 
