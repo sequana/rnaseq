@@ -12,6 +12,7 @@ sequana_wrappers: "v24.8.29"
 input_directory:
 input_readtag: _R[12]_
 input_pattern: '*fastq.gz'
+exclude_pattern:
 
 # See sequana_pipetools.readthedocs.io for details about these 2 options
 # common prefixes are removed. addition prefixes may be removed here
