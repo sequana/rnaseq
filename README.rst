@@ -186,6 +186,7 @@ Changelog
 ========= ====================================================================
 Version   Description
 ========= ====================================================================
+0.20.2    * Fix workflow and multiqc parsing
 0.20.1    * Fix wrapper version in the config and fastp rule.
 0.20.0    * Fix regression due to new sequana version
           * Update summary html to use new sequana plots

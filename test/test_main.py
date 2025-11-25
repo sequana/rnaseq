@@ -168,7 +168,7 @@ def test_full():
         cmd = f"sequana_rnaseq --input-directory {sharedir} --genome-directory {saccer3} --aligner-choice bowtie2 --working-directory {wk} --force --rRNA-feature rRNA_gene"
         subprocess.call(cmd.split())
 
-        cmd = "snakemake -s rnaseq.rules --wrapper-prefix https://raw.githubusercontent.com/sequana/sequana-wrappers/  -p --cores 2 "
+        cmd = "sh rnaseq.sh"
 
         stat = subprocess.call(cmd.split(), cwd=wk)
 

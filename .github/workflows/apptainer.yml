@@ -17,43 +17,83 @@ jobs:
     strategy:
       max-parallel: 5
       matrix:
-        python: [3.8, '3.10']
+        python: ['3.10']
       fail-fast: false
 
 
     steps:
 
-    - name: precleanup
+    # Clean up unnecessary preinstalled packages to free disk space
+    - name: Pre-cleanup
       run: |
         sudo rm -rf /usr/share/dotnet
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-    - name: install graphviz
+
+    # Cache APT .deb packages
+    - name: Cache APT archives
+      uses: actions/cache@v3
+      with:
+        path: /var/cache/apt/archives
+        key: ${{ runner.os }}-apt-cache-v1
+
+    # Cache Apptainer installation
+    - name: Cache Apptainer install
+      id: cache-apptainer
+      uses: actions/cache@v3
+      with:
+        path: |
+          /usr/bin/apptainer
+          /usr/lib/apptainer
+          /etc/apptainer
+        key: ${{ runner.os }}-apptainer-v1
+
+    # Install Apptainer only if not cached
+    - name: Install Apptainer
+      if: steps.cache-apptainer.outputs.cache-hit != 'true'
       run: |
-        sudo apt update
-        sudo apt-get install -y graphviz software-properties-common
+        sudo apt-get update
+        sudo apt-get install -y software-properties-common
         sudo add-apt-repository -y ppa:apptainer/ppa
         sudo apt update
         sudo apt install -y apptainer
 
-    - name: checkout git repo
-      uses: actions/checkout@v3
+    # Cache Apptainer image cache (~/.apptainer/cache)
+    - name: Cache Apptainer images
+      uses: actions/cache@v3
+      with:
+        path: ~/.apptainer/cache
+        key: ${{ runner.os }}-apptainer-images-v1
 
-    - name: Set up Python 3.X
-      uses: actions/setup-python@v3
+    # Checkout repository
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    # 🐍 Set up Python
+    - name: Set up Python ${{ matrix.python }}
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python }}
 
+    #  Install dependencies
     - name: Install dependencies
       run: |
+        python -m pip install --upgrade pip
         pip install .[testing]
 
-    - name: install package itself
+    # Install package and pinned dependency (example: pulp)
+    - name: Install package itself
       run: |
-         pip install .
-         pip install "pulp==2.7.0" --no-deps
+        pip install .
+        pip install "pulp==2.7.0" --no-deps
 
-    - name: testing
+    # Run tests using Apptainer
+    - name: Run Apptainer tests
       run: |
-        sequana_rnaseq --aligner-choice bowtie2 --input-directory test/data/ --use-apptainer  --genome-directory test/data/Saccer3 && cd rnaseq && sh rnaseq.sh
+        sequana_rnaseq --aligner-choice bowtie2 \
+                --input-directory test/data/ 
+                --apptainer-prefix ~/.apptainer/cache \
+                --genome-directory test/data/Saccer3
+
+        cd rnaseq && sh rnaseq.sh
 
 
