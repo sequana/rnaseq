@@ -1,0 +1,9 @@
+---
+# Codacy configuration
+#
+# The test suite is excluded from the analysis: pytest relies on plain 'assert'
+# statements, which the security engine (bandit B101) reports on every single
+# line. The test data files are excluded as well since they are not code.
+exclude_paths:
+  - 'test/**'
+  - 'doc/**'

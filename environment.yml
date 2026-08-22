@@ -21,3 +21,4 @@ dependencies:
 - picard>2.20
 - gffread
 - pulp>=2.8
+- ncbi-datasets-cli

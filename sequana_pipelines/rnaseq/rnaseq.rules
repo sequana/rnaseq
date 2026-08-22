@@ -1123,24 +1123,205 @@ onsuccess:
             guess = "?"
 
 
-    intro = f"""
-    <h2>Overview</h2>
+    from sequana.utils import config as sequana_config
+
+    # every section registered here is also listed in the sidebar of the report
+    sequana_config.summary_sections = []
+
+    def add_section(name, anchor, content):
+        """Register a section of the report. The title is added by the template."""
+        sequana_config.summary_sections.append(
+            {"name": name, "anchor": anchor, "content": content, "title_links": ""})
+
+
+    overview = f"""
     <p>
     The RNA-seq pipeline maps the reads on the provided reference (called <i>{__fasta_file__.split("/")[-1]}</i>). Features counts were extracted and are available in the <a href="./post_analysis/feature_counts">feature counts</a> directory; those files are entry points for differential gene expression analysis. The differential analysis, if performed, should be available in the <a href="post_analysis/rnadiff/">DGE analysis directory</a>. In addition, if enrichment was performed (GO or Kegg pathways), it should be available in the <a href="post_analysis"></a> directory as well.
     </p>
 
     <p>A <a href="multiqc/multiqc_report.html">multiqc report</a> is available, where various QC and mapping quality plots can be visualised. Some important plots are also in the HTML page here below.
     </p>"""
+    add_section("Overview", "overview", overview)
 
+
+    def get_multiqc_file(*names):
+        """Return the first existing multiqc data file.
+
+        The data directory is named multiqc_report_data or multiqc_data depending
+        on the multiqc version, and the content of the files also changed over
+        time, hence several candidate names.
+        """
+        for name in names:
+            for directory in ("multiqc/multiqc_report_data", "multiqc/multiqc_data"):
+                filename = f"{directory}/{name}"
+                if os.path.exists(filename):
+                    return filename
+        raise IOError(f"None of the multiqc files {names} were found")
+
+
+    # plotly.js weights about 5Mb so it is embedded in the first plot only
+    plotly_state = {"include_js": True}
+
+    def plot_to_html(fig):
+        """Return the div of a plotly figure, embedding plotly.js only once."""
+        from plotly import offline
+        div = offline.plot(fig, output_type="div", include_plotlyjs=plotly_state["include_js"])
+        plotly_state["include_js"] = False
+        return div
+
+
+    # ============================================================ summary per sample
+    def get_summary_table():
+        """Gather the main QC metrics of each sample into a single dataframe.
+
+        Each metric is optional: a missing tool (no trimming, salmon aligner, ...)
+        simply removes the corresponding columns from the table.
+        """
+        import ast
+
+        data = {}
+
+        def set_value(sample, key, value):
+            data.setdefault(sample, {})[key] = value
+
+        # trimming: library sizes, quality and duplication
+        try:
+            df = pd.read_csv(get_multiqc_file("multiqc_fastp.txt"), sep="\t")
+            for _, row in df.iterrows():
+                sample = row["Sample"].replace("fastp_", "")
+                summary = ast.literal_eval(row["summary"])
+                before = summary["before_filtering"]["total_reads"]
+                after = summary["after_filtering"]["total_reads"]
+                set_value(sample, "Raw reads (M)", round(before / 1e6, 2))
+                set_value(sample, "Trimmed reads (M)", round(after / 1e6, 2))
+                set_value(sample, "Reads kept (%)", round(100 * after / before, 2))
+                set_value(sample, "Q30 (%)", round(100 * summary["after_filtering"]["q30_rate"], 1))
+                set_value(sample, "GC (%)", round(100 * summary["after_filtering"]["gc_content"], 1))
+                duplication = ast.literal_eval(row["duplication"])
+                set_value(sample, "Duplication (%)", round(100 * duplication["rate"], 1))
+        except Exception as err:
+            logger.warning(f"No trimming metrics in the summary table: {err}")
+
+        # mapping
+        try:
+            if config["general"]["aligner"] == "bowtie2":
+                df = pd.read_csv(get_multiqc_file("multiqc_bowtie2.txt"), sep="\t")
+                for _, row in df.iterrows():
+                    set_value(row["Sample"], "Mapped (%)", round(row["overall_alignment_rate"], 2))
+            elif config["general"]["aligner"] == "star":
+                df = pd.read_csv(get_multiqc_file("multiqc_star.txt"), sep="\t")
+                for _, row in df.iterrows():
+                    mapped = row["uniquely_mapped_percent"] + row["multimapped_percent"]
+                    set_value(row["Sample"], "Mapped (%)", round(mapped, 2))
+        except Exception as err:
+            logger.warning(f"No mapping metrics in the summary table: {err}")
+
+        # annotation
+        try:
+            df = pd.read_csv(get_multiqc_file("multiqc_featureCounts.txt", "multiqc_featurecounts.txt"), sep="\t")
+            for _, row in df.iterrows():
+                set_value(row["Sample"], "Assigned (%)", round(row["percent_assigned"], 1))
+        except Exception as err:
+            logger.warning(f"No annotation metrics in the summary table: {err}")
+
+        # library complexity, computed from the count matrix itself
+        try:
+            counts = pd.read_csv("post_analysis/all_features.out", sep="\t", comment="#")
+            counts = counts[[x for x in counts.columns if x.endswith(".bam")]]
+            counts.columns = [x.split("/")[0] for x in counts.columns]
+            for sample in counts.columns:
+                total = counts[sample].sum()
+                set_value(sample, "Genes detected", int((counts[sample] > 0).sum()))
+                if total:
+                    top100 = 100 * counts[sample].nlargest(100).sum() / total
+                    set_value(sample, "Counts in top 100 genes (%)", round(top100, 1))
+        except Exception as err:
+            logger.warning(f"No library complexity metrics in the summary table: {err}")
+
+        if not data:
+            raise ValueError("no metric could be extracted")
+
+        return pd.DataFrame(data).T.sort_index()
+
+    #: (warning below this value, error below this value)
+    summary_thresholds = {
+        "Reads kept (%)": (90, 80),
+        "Q30 (%)": (85, 75),
+        "Mapped (%)": (85, 70),
+        "Assigned (%)": (70, 50),
+    }
+
+    def summary_table_to_html(df):
+        """Render the summary dataframe, highlighting the values to be checked."""
+        html = "<table class='table' style='width:auto'><thead><tr><th>Sample</th>"
+        html += "".join(f"<th>{name}</th>" for name in df.columns)
+        html += "</tr></thead><tbody>"
+
+        flagged = False
+        for sample, row in df.iterrows():
+            html += f"<tr><td><b>{sample}</b></td>"
+            for name in df.columns:
+                value = row[name]
+                # the dataframe holds floats only; print the counts as integers
+                if float(value).is_integer():
+                    value = int(value)
+                style = ""
+                if name in summary_thresholds:
+                    warning, error = summary_thresholds[name]
+                    if value < error:
+                        style = " style='background-color:#f5b7b1'"
+                    elif value < warning:
+                        style = " style='background-color:#fad7a0'"
+                    flagged = flagged or bool(style)
+                html += f"<td{style}>{value}</td>"
+            html += "</tr>"
+        html += "</tbody></table>"
+
+        if flagged:
+            html += """<p>Values highlighted in orange or red are below the expected range
+            (reads kept, Q30, mapping and annotation rates). Check the corresponding samples
+            before interpreting the differential analysis.</p>"""
+        return html
+
+    def get_reads_plot(df):
+        """Stacked bar plot of the library sizes (reads kept and reads discarded)."""
+        import plotly.graph_objects as go
+
+        kept = df["Trimmed reads (M)"]
+        discarded = df["Raw reads (M)"] - kept
+
+        fig = go.Figure(
+            data=[
+                go.Bar(name="Kept", y=df.index, x=kept, orientation="h", marker_color="#17478f"),
+                go.Bar(name="Discarded", y=df.index, x=discarded, orientation="h", marker_color="#9f1416"),
+            ]
+        )
+        fig.update_layout(barmode="stack", title="", xaxis_title="Number of reads (millions)")
+        return fig
+
+    try:
+        summary_df = get_summary_table()
+        content = """
+    <p>The table here below gathers the main metrics of each sample: the number of reads before and
+    after trimming, the sequencing quality, the mapping and annotation rates, and the complexity of
+    the library (number of genes with at least one read, and fraction of the counts found in the 100
+    most expressed genes). All those metrics, and many more, are also available in the multiqc report.
+    </p>""" + summary_table_to_html(summary_df)
+
+        if "Raw reads (M)" in summary_df.columns:
+            content += """<h3>Number of reads per sample</h3>
+    <p>Large differences between the libraries may bias the differential analysis.</p>"""
+            content += plot_to_html(get_reads_plot(summary_df))
+        add_section("Summary per sample", "summary", content)
+    except Exception as err:
+        logger.warning(f"Could not build the summary table: {err}")
 
     rRNA_done = True
-    intro += """<h2>ribosomal / contaminant content</h2>"""
+    content = ""
     try:
-        if os.path.exists("multiqc/multiqc_report_data/multiqc_bowtie1.txt"):
-            df = pd.read_csv("multiqc/multiqc_report_data/multiqc_bowtie1.txt", sep='\t')
-        elif os.path.exists("multiqc/multiqc_data/multiqc_bowtie1.txt"):
-            df = pd.read_csv("multiqc/multiqc_data/multiqc_bowtie1.txt", sep='\t')
-        else:
+        try:
+            df = pd.read_csv(get_multiqc_file("multiqc_bowtie1.txt"), sep='\t')
+        except IOError:
             rRNA_done = False
 
         if rRNA_done:
@@ -1150,15 +1331,15 @@ onsuccess:
                 rRNA = int((100 - df.not_aligned_percentage.mean())*100)/100
 
             if rRNA < 10:
-                intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is low (as expected). "
+                content += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is low (as expected). "
             elif rRNA < 20:
-                intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is moderately low. "
+                content += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is moderately low. "
             elif rRNA > 20 and rRNA <50:
-                intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is relatively high. "
+                content += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is relatively high. "
             elif rRNA >= 50:
-                intro += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is very high. "
+                content += f"<p>rRNA content (or contaminant provided) represents {rRNA}%, which is very high. "
         else:
-            intro += f"<p>rRNA content not computed (no rRNA gene or contaminant provided)</p>"
+            content += f"<p>rRNA content not computed (no rRNA gene or contaminant provided)</p>"
 
     except Exception as err:
         print(err)
@@ -1167,94 +1348,132 @@ onsuccess:
     try:
         from sequana.multiqc.plots import Bowtie1Reader
         if rRNA_done:
-            filename = "multiqc/multiqc_data/multiqc_bowtie1.txt"
-            if not os.path.exists(filename):
-                filename = "multiqc/multiqc_report_data/multiqc_bowtie1.txt"
-            br = Bowtie1Reader(filename)
+            br = Bowtie1Reader(get_multiqc_file("multiqc_bowtie1.txt"))
             br.df.Sample = [str(x).replace("_bowtie1","") for x in br.df.Sample]
             fig = br.plot_bar(html_code=True)
-            from plotly import offline
-            intro += offline.plot(fig, output_type="div", include_plotlyjs=True)
+            content += plot_to_html(fig)
     except Exception as err:
         print(err)
 
+    add_section("Ribosomal / contaminant content", "rrna", content)
+
 
     # Include the bowtie plot
+    content = ""
     try:
-        intro += """<h2>Mapping rate</h2>"""
         if config['general']['aligner'] == "bowtie2":
             from sequana.multiqc.plots import Bowtie2
-            if not manager.paired:
-                filename = "multiqc/multiqc_data/mqc_bowtie2_se_plot_1.txt"
-                if not os.path.exists(filename):
-                    filename = "multiqc/multiqc_report_data/mqc_bowtie2_se_plot_1.txt"
-                    if not os.path.exists(filename):
-                        filename = "multiqc/multiqc_data/multiqc_bowtie2.txt"
-            else:
-                filename = "multiqc/multiqc_data/mqc_bowtie2_pe_plot_1.txt"
-                if not os.path.exists(filename):
-                    filename = "multiqc/multiqc_report_data/mqc_bowtie2_pe_plot_1.txt"
-                    if not os.path.exists(filename):
-                        filename = "multiqc/multiqc_data/multiqc_bowtie2.txt"
+            plot_file = "mqc_bowtie2_pe_plot_1.txt" if manager.paired else "mqc_bowtie2_se_plot_1.txt"
+            filename = get_multiqc_file("multiqc_bowtie2.txt", plot_file)
             br = Bowtie2(filename)
             fig = br.plot(html_code=True)
-            from  plotly import offline
-            intro += """<p>The mapping was performed with bowtie2. Here below are the percentage of mapping for each sample. See also the multiqc report.</p>""" + offline.plot(fig, output_type="div", include_plotlyjs=True)
+            content += """<p>The mapping was performed with bowtie2. Here below are the percentage of mapping for each sample. See also the multiqc report.</p>""" + plot_to_html(fig)
 
         elif config["general"]["aligner"] == "star":
             from sequana.multiqc.plots import STAR
-            filename = "multiqc/multiqc_report_data/multiqc_star.txt"
-            if not os.path.exists(filename):
-                filename = "multiqc/multiqc_data/multiqc_star.txt"
+            filename = get_multiqc_file("multiqc_star.txt")
             br = STAR(filename)
             fig = br.plot(html_code=True)
-            from  plotly import offline
-            intro += """<p>The mapping was performed with STAR. Here below are the percentage of mapping for each sample. See also the multiqc report.</p>""" + offline.plot(fig, output_type="div", include_plotlyjs=True)
+            content += """<p>The mapping was performed with STAR. Here below are the percentage of mapping for each sample. See also the multiqc report.</p>""" + plot_to_html(fig)
     except Exception as err:
         print(f"WARNING: Could not generate mapping rate plot: {err}")
 
+    if content:
+        add_section("Mapping rate", "mapping", content)
+
     try:
         from sequana.multiqc.plots import FeatureCounts
-        intro += """<h2>Annotation rate</h2>"""
-        filename = "multiqc/multiqc_report_data/mqc_featureCounts_assignment_plot_1.txt"
-        if not os.path.exists(filename):
-            filename = "multiqc/multiqc_data/mqc_featureCounts_assignment_plot_1.txt"
-            # multiqc 1.27
-            if not os.path.exists(filename):
-                filename = "multiqc/multiqc_data/multiqc_featurecounts.txt"
+        # prefer the general stats files: their columns are named after the
+        # multiqc internal keys, which are stable, while the mqc_*_plot_* files
+        # use the plot legend names, which change with the multiqc version.
+        filename = get_multiqc_file(
+            "multiqc_featureCounts.txt",
+            "multiqc_featurecounts.txt",
+            "mqc_featureCounts_assignment_plot_1.txt")
 
         br = FeatureCounts(filename)
         fig = br.plot(html_code=True)
-        from  plotly import offline
-        intro += """<p>The annotation was performed with subread/feature counts software. Here below is the percentage of reads assigned to the requested feature (usually gene; see the config file here below). </p>""" + offline.plot(fig, output_type="div", include_plotlyjs=True)
+        content = """<p>The annotation was performed with subread/feature counts software. Here below is the percentage of reads assigned to the requested feature (usually gene; see the config file here below). </p>""" + plot_to_html(fig)
+        add_section("Annotation rate", "annotation", content)
     except Exception as err:
         print(err)
 
     if manager.globals['strand_summary']:
-        intro += """<h2>Strandness</h2>"""
-        intro+="""
+        content = """
         <p>Here below is a QC plot related to the strandness found for each samples. The red dotted lines indicate a tolerance. The 0.5 vertical line correspond to an <b>unstranded</b> case. A value close to 0 indicates a <b>reversely stranded</b> case, and a value close to 1 indicates a <b>stranded</b> case.
     """.format(config["general"]['aligner'], guess)
 
         if "strandness" in config['feature_counts'] and config["feature_counts"]["strandness"]:
             choice = config["feature_counts"]["strandness"]
-            intro += "User decided to set strandness to: {} </p>".format(choice)
+            content += "User decided to set strandness to: {} </p>".format(choice)
         else:
-            intro += "Strandness was guessed from the data. </p>"
+            content += "Strandness was guessed from the data. </p>"
 
-        image = SequanaReport.png_to_embedded_png("strand", "outputs/strand_summary.png",
+        content += SequanaReport.png_to_embedded_png("strand", "outputs/strand_summary.png",
                      style="width:80%; height:40%")
-        intro += image
+        add_section("Strandness", "strandness", content)
 
-    intro+=    """<h2>Differential analysis</h2>
+    add_section("Differential analysis", "dge", """
     <p>
-    Differentially expressed genes analysis is not performed automatically with this pipeline. However, information, feature counts, and other materials can be found in the directory <a href="./post_analysis/.">post_analysis</a> where the standalone 'sequana rnadiff' can be used with DeSEq2. Most probably an analysis is present. If so, please open the directory in  <a href="post_analysis/rnadiff/">rnadiff</a> report.
+    Differential gene expression (DGE) is not performed automatically by this pipeline, but everything
+    required is prepared for you in the <a href="./post_analysis/.">post_analysis</a> directory:
     </p>
-    """
+    <ul>
+        <li><b>all_features.out</b>: the feature counts of all samples,</li>
+        <li><b>design.csv</b>: the design of the experiment, guessed from the sample names. Check it
+            and edit it if the conditions or the replicates are not the ones you expect,</li>
+        <li><b>rnadiff.sh</b>: the ready-to-use command line.</li>
+    </ul>
+    <p>
+    Once the design file is correct, the analysis is a two-liner:
+    </p>
+    <pre>cd post_analysis
+./rnadiff.sh</pre>
+    <p>
+    Results are written in <a href="post_analysis/rnadiff/">post_analysis/rnadiff</a>. If an analysis
+    was already performed, its report is available there.
+    </p>
+
+    <h3>Requirements: sequana and DESeq2</h3>
+    <p>
+    The <i>sequana rnadiff</i> command performs the analysis with <b>DESeq2</b>. Besides sequana
+    itself (already available if you ran this pipeline), it calls the <i>Rscript</i> executable
+    internally, so an R installation providing the DESeq2 package must be found in your PATH.
+    </p>
+    <p>
+    The simplest way to get one is <a href="https://damona.readthedocs.io">Damona</a>, a manager for
+    apptainer containers. It downloads the container and creates the <i>Rscript</i> command for you:
+    </p>
+    <pre># apptainer must be installed first; see https://damona.readthedocs.io
+pip install damona
+
+damona create rnadiff
+damona activate rnadiff
+damona install rtools      # provides R and DESeq2
+
+cd post_analysis
+./rnadiff.sh</pre>
+    <p>
+    If you would rather not use Damona, the same container can be downloaded directly from Zenodo
+    (DOI <a href="https://doi.org/10.5281/zenodo.10687085">10.5281/zenodo.10687085</a>):
+    </p>
+    <pre>wget https://zenodo.org/record/10687085/files/rtools_1.3.0.img</pre>
+    <p>
+    and exposed as an <i>Rscript</i> command that sequana can call:
+    </p>
+    <pre>mkdir -p ~/bin
+printf '#!/bin/bash\napptainer exec -B $PWD $HOME/rtools_1.3.0.img Rscript "$@"\n' > ~/bin/Rscript
+chmod +x ~/bin/Rscript
+export PATH=~/bin:$PATH</pre>
+    <p>
+    Besides DESeq2, this container also provides limma, IHW, ashr, pheatmap and the other R packages
+    used during the analysis.
+    </p>
+    """)
 
     # Now the final report. add the original command in the HTML report
     data = manager.getmetadata()
-    s = SequanaReport(data, intro)
+    s = SequanaReport(data)
 
     shell("chmod -R g+w .")
     shell("rm -rf rulegraph")

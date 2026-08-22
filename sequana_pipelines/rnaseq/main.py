@@ -38,7 +38,9 @@ help = init_click(
             "--do-mark-duplicates",
             "--do-rnaseqc",
             "--do-rseqc",
+            "--genome-accession",
             "--genome-directory",
+            "--force-genome-download",
             "--rnaseqc-gtf-file",
             "--rRNA-feature",
             "--rseqc-bed-file",
@@ -62,7 +64,25 @@ help = init_click(
     "genome_directory",
     show_default=True,
     type=click.Path(dir_okay=True, file_okay=False),
-    required=True,
+    help="""Directory where the genome sequence (<name>.fa) and its annotation
+(<name>.gff) are stored. Both files must be named after the directory itself.
+Mutually exclusive with --genome-accession.""",
+)
+@click.option(
+    "--genome-accession",
+    "genome_accession",
+    default=None,
+    show_default=True,
+    help="""A NCBI assembly accession (e.g. GCF_000146045.2). The genome sequence and
+its annotation are downloaded into a local directory named after the accession. The NCBI
+'datasets' tool is used if available, otherwise the NCBI datasets API is used (no external
+software required). Mutually exclusive with --genome-directory.""",
+)
+@click.option(
+    "--force-genome-download",
+    is_flag=True,
+    help="""Download the genome again even though it is already available locally
+(used with --genome-accession only)""",
 )
 @click.option(
     "--aligner-choice",
@@ -137,8 +157,17 @@ fly.""",
 def main(**options):
 
     if options["from_project"]:
-        click.echo("--from-project Not yet implemented")
+        click.echo("--from-project Not yet implemented", err=True)
         sys.exit(1)
+
+    # mutually exclusive and mandatory genome options
+    if options["genome_directory"] and options["genome_accession"]:
+        click.echo("--genome-directory and --genome-accession are mutually exclusive", err=True)
+        sys.exit(1)
+    if not options["genome_directory"] and not options["genome_accession"]:
+        click.echo("You must provide either --genome-directory or --genome-accession", err=True)
+        sys.exit(1)
+
     # the real stuff is here
     manager = SequanaManager(options, NAME)
     manager.setup()
@@ -152,8 +181,25 @@ def main(**options):
     logger.setLevel(options.level)
 
     manager.fill_data_options()
+
+    # --------------------------------------------------------- genome
+    # the genome may be downloaded from NCBI given an accession, otherwise
+    # a local directory is expected
+    if options.genome_accession:
+        from sequana_pipelines.rnaseq.download import download_genome
+
+        try:
+            genome_directory = download_genome(
+                options.genome_accession, outdir=".", force=options.force_genome_download
+            )
+        except RuntimeError as err:
+            logger.critical(str(err))
+            sys.exit(1)
+    else:
+        genome_directory = os.path.abspath(options.genome_directory)
+
     # --------------------------------------------------------- general
-    cfg.general.genome_directory = os.path.abspath(options.genome_directory)
+    cfg.general.genome_directory = genome_directory
     cfg.general.aligner = options.aligner
 
     # genome name = cfg.genome.genome_directory
