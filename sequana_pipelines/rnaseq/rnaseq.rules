@@ -357,69 +357,72 @@ elif manager.config.trimming.software_choice in ["cutadapt", "atropos"]:
         include: sm.modules["cutadapt"]
 elif manager.config.trimming.software_choice == "fastp":
 
-    __clean_fastq__output = ["{sample}/fastp/{sample}_R1_.fastp.fastq.gz"]
-    if manager.paired:
-        __clean_fastq__output += ["{sample}/fastp/{sample}_R2_.fastp.fastq.gz"]
-
-    _quality = config["fastp"].get("quality", 15)
-    _minlen = config["fastp"].get("minimum_length", 20)
-
-    options_fastp = config["fastp"].get("options", "")
-    options_fastp += f" --qualified_quality_phred {_quality}"
-    options_fastp += f" -l {_minlen}"
-    if config["fastp"].get("disable_adapter_trimming", False) is True:
-        options_fastp += " --disable_adapter_trimming"
-    if config["fastp"].get("disable_quality_filtering", False) is True:
-        options_fastp += " --disable_quality_filtering"
-
-    if manager.paired:
-        rule fastp:
-            input:
-                fastq=manager.getrawdata()
-            output:
-                r1="{sample}/fastp/{sample}_R1_.fastp.fastq.gz",
-                r2="{sample}/fastp/{sample}_R2_.fastp.fastq.gz",
-                html="{sample}/fastp/fastp_{sample}.html",
-                json="{sample}/fastp/fastp_{sample}.json",
-            log:
-                "logs/fastp/{sample}.log"
-            params:
-                options=options_fastp,
-                adapters=config["fastp"]["adapters"]
-            threads:
-                config["fastp"].get("threads", 4)
-            resources:
-                **config['fastp']['resources']
-            container:
-                config['apptainers']['fastp']
-            shell:
-                manager.get_shell("fastp/run", "v1")
+    if config["fastp"].get("do", True) is False:
+        __clean_fastq__output = manager.getrawdata()
     else:
-        rule fastp:
-            input:
-                fastq=manager.getrawdata()
-            output:
-                r1="{sample}/fastp/{sample}_R1_.fastp.fastq.gz",
-                html="{sample}/fastp/fastp_{sample}.html",
-                json="{sample}/fastp/fastp_{sample}.json",
-            log:
-                "logs/fastp/{sample}.log"
-            params:
-                options=options_fastp,
-                adapters=config["fastp"]["adapters"]
-            threads:
-                config["fastp"].get("threads", 4)
-            resources:
-                **config['fastp']['resources']
-            container:
-                config['apptainers']['fastp']
-            shell:
-                """
-                fastp --thread {threads} {params.options} {params.adapters} \
-                    --in1 {input.fastq} \
-                    --out1 {output.r1} \
-                    --html {output.html} --json {output.json} >{log} 2>&1
-                """
+        __clean_fastq__output = ["{sample}/fastp/{sample}_R1_.fastp.fastq.gz"]
+        if manager.paired:
+            __clean_fastq__output += ["{sample}/fastp/{sample}_R2_.fastp.fastq.gz"]
+
+        _quality = config["fastp"].get("quality", 15)
+        _minlen = config["fastp"].get("minimum_length", 20)
+
+        options_fastp = config["fastp"].get("options", "")
+        options_fastp += f" --qualified_quality_phred {_quality}"
+        options_fastp += f" -l {_minlen}"
+        if config["fastp"].get("disable_adapter_trimming", False) is True:
+            options_fastp += " --disable_adapter_trimming"
+        if config["fastp"].get("disable_quality_filtering", False) is True:
+            options_fastp += " --disable_quality_filtering"
+
+        if manager.paired:
+            rule fastp:
+                input:
+                    fastq=manager.getrawdata()
+                output:
+                    r1="{sample}/fastp/{sample}_R1_.fastp.fastq.gz",
+                    r2="{sample}/fastp/{sample}_R2_.fastp.fastq.gz",
+                    html="{sample}/fastp/fastp_{sample}.html",
+                    json="{sample}/fastp/fastp_{sample}.json",
+                log:
+                    "logs/fastp/{sample}.log"
+                params:
+                    options=options_fastp,
+                    adapters=config["fastp"]["adapters"]
+                threads:
+                    config["fastp"].get("threads", 4)
+                resources:
+                    **config['fastp']['resources']
+                container:
+                    config['apptainers']['fastp']
+                shell:
+                    manager.get_shell("fastp/run", "v1")
+        else:
+            rule fastp:
+                input:
+                    fastq=manager.getrawdata()
+                output:
+                    r1="{sample}/fastp/{sample}_R1_.fastp.fastq.gz",
+                    html="{sample}/fastp/fastp_{sample}.html",
+                    json="{sample}/fastp/fastp_{sample}.json",
+                log:
+                    "logs/fastp/{sample}.log"
+                params:
+                    options=options_fastp,
+                    adapters=config["fastp"]["adapters"]
+                threads:
+                    config["fastp"].get("threads", 4)
+                resources:
+                    **config['fastp']['resources']
+                container:
+                    config['apptainers']['fastp']
+                shell:
+                    """
+                    fastp --thread {threads} {params.options} {params.adapters} \
+                        --in1 {input.fastq} \
+                        --out1 {output.r1} \
+                        --html {output.html} --json {output.json} >{log} 2>&1
+                    """
 
 
 # ===================================================== FASTQC fastp results
