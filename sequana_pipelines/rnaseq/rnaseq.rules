@@ -137,7 +137,8 @@ elif manager.config.general.rRNA_feature:
             """
             (
             # used to be gawk but awk is more generic.
-            awk '{{ if ($3=="{params.feature}") print }}' {input.gff} > {output.gff}
+            # Also search by gene_biotype attribute in case rRNA is not a feature type
+            awk '{{ if ($3=="{params.feature}" || ($9 ~ /gene_biotype={params.feature}/)) print }}' {input.gff} > {output.gff}
             if [ -s {output.gff} ]
             then
                 bedtools getfasta -fi {input.fasta} -bed {output.gff}  -fo {output.fasta}
