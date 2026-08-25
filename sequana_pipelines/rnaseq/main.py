@@ -316,13 +316,29 @@ def main(**options):
         # first check the rRNA feature
         if cfg["general"]["rRNA_feature"] and cfg["general"]["rRNA_feature"] not in valid_features:
 
-            logger.error(
-                "rRNA feature not found in the input GFF ({})".format(gff_file)
-                + " This is probably an error. Please check the GFF content and /or"
-                " change the feature name with --rRNA-feature based on the content"
-                " of your GFF. Valid features are: {}".format(valid_features)
-            )
-            sys.exit()
+            # rRNA may not be a feature type but could be annotated via gene_biotype
+            # attribute (e.g. gene_biotype=rRNA). Search the GFF dataframe for such entries.
+            rRNA_feature = cfg["general"]["rRNA_feature"]
+            biotype_matches = df_gff[
+                df_gff["attributes"].apply(
+                    lambda attrs: attrs.get("gene_biotype", "") == rRNA_feature
+                )
+            ]
+            if len(biotype_matches) > 0:
+                logger.warning(
+                    f"rRNA feature '{rRNA_feature}' not found as a feature type in {gff_file},"
+                    f" but {len(biotype_matches)} entries with gene_biotype='{rRNA_feature}' were found"
+                    f" (feature types: {sorted(biotype_matches['genetic_type'].unique().tolist())})."
+                    " The pipeline will search for rRNA using the gene_biotype attribute."
+                )
+            else:
+                logger.error(
+                    "rRNA feature not found in the input GFF ({})".format(gff_file)
+                    + " This is probably an error. Please check the GFF content and /or"
+                    " change the feature name with --rRNA-feature based on the content"
+                    " of your GFF. Valid features are: {}".format(valid_features)
+                )
+                sys.exit()
 
         # then, check the main feature
         fc_type = cfg.feature_counts.feature
