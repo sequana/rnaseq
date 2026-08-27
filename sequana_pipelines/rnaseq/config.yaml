@@ -245,6 +245,10 @@ salmon_mapping:
     resources:
         mem: 4G
 
+salmon_to_features:
+    resources:
+        mem: 4G
+
 #############################################################################
 # feature_counts used to count reads against features
 #
@@ -402,6 +406,5 @@ multiqc:
     config_file: multiqc_config.yaml
     resources:
         mem: 8G
-
 
 
