@@ -214,6 +214,13 @@ mapping:
                 type: any
                 required: true
 
+    'salmon_to_features':
+        type: map
+        mapping:
+            "resources":
+                type: any
+                required: true
+
     'bam_coverage':
         type: map
         mapping:
@@ -362,4 +369,3 @@ mapping:
             "resources":
                 type: any
                 required: true
-

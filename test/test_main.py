@@ -2,8 +2,10 @@ import os
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 from click.testing import CliRunner
+from yaml import safe_load
 
 from sequana_pipelines.rnaseq.main import main
 
@@ -289,3 +291,12 @@ def test_genome_accession(monkeypatch):
 
         with open(f"{directory}/.sequana/config.yaml") as fin:
             assert os.path.abspath(saccer3) in fin.read()
+
+
+def test_salmon_to_features_resources_in_config_and_schema():
+    root = Path(__file__).resolve().parents[1]
+    config = safe_load((root / "sequana_pipelines/rnaseq/config.yaml").read_text())
+    schema = safe_load((root / "sequana_pipelines/rnaseq/schema.yaml").read_text())
+
+    assert config["salmon_to_features"]["resources"]["mem"] == "4G"
+    assert schema["mapping"]["salmon_to_features"]["mapping"]["resources"]["required"] is True

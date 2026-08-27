@@ -861,6 +861,8 @@ elif manager.config.feature_counts.do and manager.config.general.aligner in ['sa
     rule salmon_to_features:
         input: __salmon_mapping__output_counts
         output: __salmon_to_features__output
+        resources:
+            **config["salmon_to_features"]["resources"]
         params:
             gff=__gff_file__
         shell:
